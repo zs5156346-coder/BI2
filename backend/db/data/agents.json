@@ -1,0 +1,122 @@
+[
+  {
+    "id": "analyst",
+    "name": "Analyst Agent",
+    "name_cn": "需求分析 Agent",
+    "description": "理解业务需求，转化为结构化指标定义",
+    "icon": "💡",
+    "color": "#6366f1",
+    "capabilities": [
+      "需求解析",
+      "指标定义",
+      "口径校验",
+      "分析方案"
+    ],
+    "status": "online"
+  },
+  {
+    "id": "modeler",
+    "name": "Modeler Agent",
+    "name_cn": "数据模型 Agent",
+    "description": "设计数据仓库模型，支持星型/雪花模型",
+    "icon": "🏗️",
+    "color": "#8b5cf6",
+    "capabilities": [
+      "模型设计",
+      "DDL生成",
+      "模型复用",
+      "变更影响分析"
+    ],
+    "status": "online"
+  },
+  {
+    "id": "etl",
+    "name": "ETL Agent",
+    "name_cn": "ETL 开发 Agent",
+    "description": "自动生成数据管道SQL代码和调度配置",
+    "icon": "⚡",
+    "color": "#f59e0b",
+    "capabilities": [
+      "SQL生成",
+      "管道编排",
+      "增量策略",
+      "性能优化"
+    ],
+    "status": "online"
+  },
+  {
+    "id": "service",
+    "name": "Service Agent",
+    "name_cn": "指标服务 Agent",
+    "description": "提供指标API接口，支持灵活查询",
+    "icon": "🔌",
+    "color": "#10b981",
+    "capabilities": [
+      "接口生成",
+      "查询优化",
+      "缓存管理",
+      "版本控制"
+    ],
+    "status": "online"
+  },
+  {
+    "id": "viz",
+    "name": "Viz Agent",
+    "name_cn": "可视化 Agent",
+    "description": "智能推荐图表类型，设计仪表盘",
+    "icon": "📊",
+    "color": "#3b82f6",
+    "capabilities": [
+      "图表推荐",
+      "布局设计",
+      "交互配置",
+      "自动发布"
+    ],
+    "status": "online"
+  },
+  {
+    "id": "qa",
+    "name": "QA Agent",
+    "name_cn": "质量保障 Agent",
+    "description": "全链路数据质量检查和验证",
+    "icon": "🛡️",
+    "color": "#ef4444",
+    "capabilities": [
+      "数据质量",
+      "口径一致性",
+      "回归测试",
+      "测试报告"
+    ],
+    "status": "online"
+  },
+  {
+    "id": "ops",
+    "name": "Ops Agent",
+    "name_cn": "运维监控 Agent",
+    "description": "监控任务执行，处理告警",
+    "icon": "⚙️",
+    "color": "#6b7280",
+    "capabilities": [
+      "调度监控",
+      "数据新鲜度",
+      "性能监控",
+      "告警管理"
+    ],
+    "status": "online"
+  },
+  {
+    "id": "orchestrator",
+    "name": "Orchestrator Agent",
+    "name_cn": "编排调度 Agent",
+    "description": "协调各Agent工作，跟踪项目进度",
+    "icon": "🎯",
+    "color": "#ec4899",
+    "capabilities": [
+      "任务编排",
+      "Agent分派",
+      "状态追踪",
+      "异常处理"
+    ],
+    "status": "online"
+  }
+]

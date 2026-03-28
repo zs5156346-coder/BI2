@@ -1,0 +1,131 @@
+[
+  {
+    "id": "70452048-8e75-441d-8f2a-6566f7ced536",
+    "title": "销售概览仪表盘",
+    "type": "dashboard",
+    "config": {
+      "layout": "grid",
+      "charts": [
+        {
+          "id": "c1",
+          "type": "line",
+          "title": "日销售额趋势",
+          "metrics": [
+            "daily_revenue"
+          ],
+          "xAxis": "dt"
+        },
+        {
+          "id": "c2",
+          "type": "bar",
+          "title": "TOP10城市",
+          "metrics": [
+            "daily_revenue"
+          ],
+          "xAxis": "city",
+          "limit": 10
+        },
+        {
+          "id": "c3",
+          "type": "pie",
+          "title": "品类占比",
+          "metrics": [
+            "daily_revenue"
+          ],
+          "xAxis": "product_category"
+        }
+      ]
+    },
+    "metrics": [
+      "daily_revenue"
+    ],
+    "created_by": "admin",
+    "created_at": "2026-03-28T07:43:11.356Z",
+    "updated_at": "2026-03-28T07:43:11.356Z"
+  },
+  {
+    "id": "5b9aed31-1014-4230-8a92-fa43937b1fac",
+    "title": "用户分析仪表盘",
+    "type": "dashboard",
+    "config": {
+      "layout": "grid",
+      "charts": [
+        {
+          "id": "c1",
+          "type": "line",
+          "title": "DAU趋势",
+          "metrics": [
+            "dau"
+          ],
+          "xAxis": "dt"
+        },
+        {
+          "id": "c2",
+          "type": "line",
+          "title": "留存率趋势",
+          "metrics": [
+            "retention_rate_d1"
+          ],
+          "xAxis": "dt"
+        }
+      ]
+    },
+    "metrics": [
+      "dau",
+      "retention_rate_d1"
+    ],
+    "created_by": "admin",
+    "created_at": "2026-03-28T07:43:11.356Z",
+    "updated_at": "2026-03-28T07:43:11.356Z"
+  },
+  {
+    "id": "fa877ad4-7a97-4204-948e-4780b3d208f7",
+    "title": "销售概览仪表盘",
+    "type": "dashboard",
+    "config": {
+      "layout": "grid",
+      "charts": [
+        {
+          "id": "c1774684208749",
+          "type": "pie",
+          "title": "图表 1",
+          "metrics": [
+            "daily_revenue"
+          ],
+          "xAxis": "dt"
+        }
+      ]
+    },
+    "metrics": [
+      "daily_revenue"
+    ],
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T07:50:25.436Z",
+    "updated_at": "2026-03-28T07:50:26.869Z"
+  },
+  {
+    "id": "9230d4cb-32a6-43dd-9b1d-0fd4c49ff7f3",
+    "title": "销售概览仪表盘",
+    "type": "dashboard",
+    "config": {
+      "layout": "grid",
+      "charts": [
+        {
+          "id": "c1774684245515",
+          "type": "pie",
+          "title": "图表 1",
+          "metrics": [
+            "daily_revenue"
+          ],
+          "xAxis": "dt"
+        }
+      ]
+    },
+    "metrics": [
+      "daily_revenue"
+    ],
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T07:50:48.085Z",
+    "updated_at": "2026-03-28T07:50:49.336Z"
+  }
+]

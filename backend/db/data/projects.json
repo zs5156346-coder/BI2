@@ -1,0 +1,65 @@
+[
+  {
+    "id": "6bbb73e1-3cbc-4eef-b71d-697a8aebb05a",
+    "name": "电商销售分析平台",
+    "description": "整合多渠道销售数据，提供实时销售洞察",
+    "status": "developing",
+    "current_phase": "etl",
+    "progress": 65,
+    "created_at": "2026-03-28T07:43:11.356Z",
+    "updated_at": "2026-03-28T07:43:11.356Z"
+  },
+  {
+    "id": "8e3c56a3-8677-4a4e-99e1-a292bd4b89ef",
+    "current_phase": "analysis",
+    "progress": 15,
+    "created_at": "2026-03-28T07:43:11.356Z",
+    "updated_at": "2026-03-28T10:48:44.164Z",
+    "name": "用户行为分析系统",
+    "description": "待命名项目",
+    "status": "planning"
+  },
+  {
+    "id": "f77801dd-23a0-4b29-b976-3092220ffb74",
+    "name": "供应链监控平台",
+    "description": "实时监控供应链各环节指标",
+    "status": "completed",
+    "current_phase": "ops",
+    "progress": 100,
+    "created_at": "2026-03-28T07:43:11.356Z",
+    "updated_at": "2026-03-28T07:43:11.356Z"
+  },
+  {
+    "id": "46a99106-fb5e-487a-b8fc-414301049763",
+    "current_phase": "analysis",
+    "progress": 15,
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T09:07:09.150Z",
+    "updated_at": "2026-03-28T10:32:02.638Z",
+    "name": "产销看板",
+    "description": "待命名项目",
+    "status": "planning"
+  },
+  {
+    "id": "ce7ea5ee-5671-4984-834b-ab3240dd923e",
+    "current_phase": "analysis",
+    "progress": 15,
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T09:29:44.610Z",
+    "updated_at": "2026-03-28T10:34:26.016Z",
+    "name": "质量看板",
+    "description": "待命名项目",
+    "status": "planning"
+  },
+  {
+    "id": "c0ef53ae-abd5-44f1-a929-f10fed64e5d0",
+    "name": "成本看板",
+    "description": "",
+    "status": "planning",
+    "current_phase": "analysis",
+    "progress": 5,
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T10:52:07.049Z",
+    "updated_at": "2026-03-28T10:52:07.049Z"
+  }
+]

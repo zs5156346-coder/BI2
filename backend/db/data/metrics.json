@@ -1,0 +1,78 @@
+[
+  {
+    "id": "b9403b73-859e-4661-b65a-fd7122a18be2",
+    "name": "daily_revenue",
+    "name_cn": "日销售额",
+    "category": "交易",
+    "expression": "SUM(order_amount)",
+    "dimensions": [
+      "dt",
+      "city",
+      "product_category"
+    ],
+    "description": "每日所有订单的销售总额",
+    "status": "active",
+    "created_at": "2026-03-28T07:43:11.355Z",
+    "updated_at": "2026-03-28T07:43:11.355Z"
+  },
+  {
+    "id": "f0f8ddab-9935-4e54-aef6-4861a79e0ee5",
+    "name": "daily_orders",
+    "name_cn": "日订单量",
+    "category": "交易",
+    "expression": "COUNT(DISTINCT order_id)",
+    "dimensions": [
+      "dt",
+      "city"
+    ],
+    "description": "每日订单总数",
+    "status": "active",
+    "created_at": "2026-03-28T07:43:11.355Z",
+    "updated_at": "2026-03-28T07:43:11.355Z"
+  },
+  {
+    "id": "146a23ac-cbf5-4a53-832c-70ef291f407c",
+    "name": "dau",
+    "name_cn": "日活跃用户数",
+    "category": "用户",
+    "expression": "COUNT(DISTINCT user_id)",
+    "dimensions": [
+      "dt",
+      "platform"
+    ],
+    "description": "每日活跃用户去重数量",
+    "status": "active",
+    "created_at": "2026-03-28T07:43:11.355Z",
+    "updated_at": "2026-03-28T07:43:11.355Z"
+  },
+  {
+    "id": "ca997d63-4955-4cc7-b8af-79aa350efd5c",
+    "name": "avg_order_value",
+    "name_cn": "客单价",
+    "category": "交易",
+    "expression": "SUM(order_amount)/COUNT(DISTINCT user_id)",
+    "dimensions": [
+      "dt",
+      "city"
+    ],
+    "description": "每用户平均订单金额",
+    "status": "active",
+    "created_at": "2026-03-28T07:43:11.355Z",
+    "updated_at": "2026-03-28T07:43:11.355Z"
+  },
+  {
+    "id": "9884383f-7c14-4d01-a575-fc310fb601fc",
+    "name": "retention_rate_d1",
+    "name_cn": "次日留存率",
+    "category": "用户",
+    "expression": "DAY1_RETAIN/DAY0_LOGIN*100",
+    "dimensions": [
+      "dt",
+      "channel"
+    ],
+    "description": "新用户次日留存率",
+    "status": "active",
+    "created_at": "2026-03-28T07:43:11.355Z",
+    "updated_at": "2026-03-28T07:43:11.355Z"
+  }
+]

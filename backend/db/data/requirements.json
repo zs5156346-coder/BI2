@@ -1,0 +1,166 @@
+[
+  {
+    "id": "d72c8936-1b25-473a-9362-a5cd5ea77829",
+    "title": "门店日销售分析",
+    "description": "按城市和门店维度看日销售额",
+    "summary": "按城市和门店维度看日销售额",
+    "metrics": [],
+    "dimensions": [],
+    "suggestions": [],
+    "source": "manual",
+    "agent_id": null,
+    "conversation_id": null,
+    "priority": "high",
+    "status": "draft",
+    "assignee": null,
+    "project_id": null,
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T09:18:31.571Z",
+    "updated_at": "2026-03-28T09:18:31.571Z"
+  },
+  {
+    "id": "c3a45bd7-3209-466c-80c8-b090e5148241",
+    "title": "用户留存分析需求",
+    "description": "用户留存分析需求",
+    "summary": "用户留存分析需求，待明确业务场景",
+    "metrics": [
+      "retention_rate",
+      "retained_users",
+      "initial_users"
+    ],
+    "dimensions": [
+      "日期",
+      "渠道",
+      "用户类型"
+    ],
+    "suggestions": [
+      "<think>\n用户再次发送了\"用户留存分析需求\"，看起来是一个简短的需求描述。结合上一轮对话的背景，用户已经明确想\"分析用户的留存情况，按渠道分\"。\n\n这次用户可能是：\n1. 确认了需求，想要我提供更完整的方案\n2. 简化描述，希望我直接给出标准方案\n3. 在继续对话，想看更多内容\n\n考虑到用户的简短输入，我应该：\n1. 给出清晰、直接的分析方案\n2. 提供可落地的指标定义和分析框架\n3. 保持"
+    ],
+    "source": "agent",
+    "agent_id": "analyst",
+    "priority": "medium",
+    "status": "analyzing",
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T09:19:45.060Z",
+    "updated_at": "2026-03-28T10:50:12.819Z",
+    "business_goal": "评估用户在完成初始行为（如注册或首单）后，在特定周期内持续回访或活跃的能力，以支持产品迭代和运营策略优化。",
+    "analysis_plan": "{\"approach\":\"采用同期群分析法（Cohort Analysis），按初始行为发生日期将用户分群，追踪不同群组在生命周期内的留存表现变化。\",\"visualizations\":[\"留存矩阵/水波纹图\",\"留存趋势折线图\",\"留存漏斗图\"],\"data_range\":\"建议至少覆盖近3个月的历史数据，时间粒度支持按日/周查看。\"}",
+    "next_steps": "[\"明确初始行为定义（如注册、首次下单）\",\"明确回访行为定义（如登录、浏览、复购）\",\"确定核心分析维度（如渠道、版本、地区）\"]",
+    "report": "# 📋 需求分析报告\n\n## 1. 需求概述\n用户留存分析需求，待明确业务场景\n\n**业务目标**: 评估用户在完成初始行为（如注册或首单）后，在特定周期内持续回访或活跃的能力，以支持产品迭代和运营策略优化。\n\n## 2. 核心指标定义\n\n### 1. N日留存率 (retention_rate)\n- **分类**: 用户\n- **计算公式**: `第N日完成回访行为的用户数 / 初始行为用户总数 * 100%`\n- **分析维度**: 日期、渠道、用户类型\n- **业务含义**: 衡量用户在初始行为发生后第N天的回访比例，核心评估指标。\n- **优先级**: 🔴 高\n\n### 2. 留存用户数 (retained_users)\n- **分类**: 用户\n- **计算公式**: `COUNT(DISTINCT 满足回访条件的用户ID)`\n- **分析维度**: 日期、渠道\n- **业务含义**: 在特定周期内完成回访行为的去重用户数量。\n- **优先级**: 🔴 高\n\n### 3. 初始用户数 (initial_users)\n- **分类**: 用户\n- **计算公式**: `COUNT(DISTINCT 满足初始行为的用户ID)`\n- **分析维度**: 日期、渠道\n- **业务含义**: 作为留存率计算分母的基准用户群体数量。\n- **优先级**: 🟡 中\n\n## 3. 分析方案\n\n**推荐方法**: 采用同期群分析法（Cohort Analysis），按初始行为发生日期将用户分群，追踪不同群组在生命周期内的留存表现变化。\n\n**可视化建议**: 留存矩阵/水波纹图、留存趋势折线图、留存漏斗图\n\n**数据范围**: 建议至少覆盖近3个月的历史数据，时间粒度支持按日/周查看。\n\n## 4. 下一步行动\n\n1. 明确初始行为定义（如注册、首次下单）\n2. 明确回访行为定义（如登录、浏览、复购）\n3. 确定核心分析维度（如渠道、版本、地区）\n\n---\n*本报告由需求分析 Agent 生成，置信度 65%*\n",
+    "report_confidence": 0.65
+  },
+  {
+    "id": "9bf86336-e410-4a6c-b4ba-30a94e9c426a",
+    "title": "做一个车企的质量分析看板",
+    "description": "做一个车企的质量分析看板",
+    "summary": "车企质量分析看板需求分析",
+    "metrics": [
+      "daily_sales",
+      "quality_issue_count",
+      "quality_issue_rate",
+      "customer_complaint_count",
+      "defect_rate"
+    ],
+    "dimensions": [
+      "date",
+      "product_category",
+      "region",
+      "issue_type",
+      "severity",
+      "product_model",
+      "production_line",
+      "complaint_type",
+      "component_type"
+    ],
+    "suggestions": [],
+    "source": "agent",
+    "agent_id": "analyst",
+    "conversation_id": null,
+    "priority": "medium",
+    "status": "analyzing",
+    "assignee": null,
+    "project_id": null,
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T09:23:50.314Z",
+    "updated_at": "2026-03-28T10:33:41.102Z",
+    "business_goal": "通过质量分析看板实时监控车企产品质量状况，识别质量问题趋势，提升整体质量管理水平",
+    "analysis_plan": "{\"approach\":\"时间趋势分析、对比分析、问题根因分析\",\"visualizations\":[\"趋势折线图\",\"对比柱状图\",\"柏柏图\",\"热力图\",\"仪表盘\"],\"data_range\":\"建议近6-12个月数据，时间粒度为天/周/月粒度\"}",
+    "next_steps": "[\"与业务方确认质量分析看板的具体维度和指标口径\",\"明确质量问题分类标准和严重程度定义\",\"确认数据来源和取数逻辑\",\"确定看板更新频率和展示终端\"]",
+    "report": "# 📋 需求分析报告\n\n## 1. 需求概述\n车企质量分析看板需求分析\n\n**业务目标**: 通过质量分析看板实时监控车企产品质量状况，识别质量问题趋势，提升整体质量管理水平\n\n## 2. 核心指标定义\n\n### 1. 每日销售量 (daily_sales)\n- **分类**: 交易\n- **计算公式**: `COUNT(order_id) WHERE order_date = CURRENT_DATE`\n- **分析维度**: date、product_category、region\n- **业务含义**: 每日成交的订单数量，反映销售动态\n- **优先级**: 🟡 中\n\n### 2. 质量问题数量 (quality_issue_count)\n- **分类**: 质量\n- **计算公式**: `COUNT(quality_issue_id) WHERE issue_date = CURRENT_DATE`\n- **分析维度**: date、issue_type、severity、product_model\n- **业务含义**: 每日记录的质量问题总数，用于监控质量状况\n- **优先级**: 🔴 高\n\n### 3. 质量问题率 (quality_issue_rate)\n- **分类**: 质量\n- **计算公式**: `quality_issue_count / total_production * 100%`\n- **分析维度**: date、product_model、production_line\n- **业务含义**: 产品质量问题发生率，衡量质量控制效果\n- **优先级**: 🔴 高\n\n### 4. 客户投诉数量 (customer_complaint_count)\n- **分类**: 用户\n- **计算公式**: `COUNT(complaint_id) WHERE complaint_date = CURRENT_DATE`\n- **分析维度**: date、complaint_type、product_model\n- **业务含义**: 每日客户投诉次数，反映用户满意度\n- **优先级**: 🔴 高\n\n### 5. 缺陷率 (defect_rate)\n- **分类**: 质量\n- **计算公式**: `defect_count / inspection_count * 100%`\n- **分析维度**: date、production_line、component_type\n- **业务含义**: 产品缺陷比率，衡量生产质量水平\n- **优先级**: 🔴 高\n\n## 3. 分析方案\n\n**推荐方法**: 时间趋势分析、对比分析、问题根因分析\n\n**可视化建议**: 趋势折线图、对比柱状图、柏柏图、热力图、仪表盘\n\n**数据范围**: 建议近6-12个月数据，时间粒度为天/周/月粒度\n\n## 4. 下一步行动\n\n1. 与业务方确认质量分析看板的具体维度和指标口径\n2. 明确质量问题分类标准和严重程度定义\n3. 确认数据来源和取数逻辑\n4. 确定看板更新频率和展示终端\n\n---\n*本报告由需求分析 Agent 生成，置信度 50%*\n",
+    "report_confidence": 0.5
+  },
+  {
+    "id": "bcbd8670-9878-4d49-8155-e792c1b0725e",
+    "title": "开发一个成本看板，包含预算、成本相关指标",
+    "description": "开发一个成本看板，包含预算、成本相关指标",
+    "metrics": [],
+    "dimensions": [],
+    "suggestions": [
+      "【需求分析】\n\n## 📊 需求理解\n\n**核心目标**：构建企业成本监控体系，实现预算与实际成本的对比分析与管控\n\n**当前理解**：\n需求覆盖面较广，成本分析通常分为“成本构成”、“预算执行”、“趋势监控”三个层面。需明确成本范围（全公司/项目/部门）及管控粒度。\n\n---\n\n## 🔍 需要确认的问题\n\n| 维度 | 澄清问题 |\n|------|----------|\n| **成本范围**"
+    ],
+    "source": "agent",
+    "agent_id": "analyst",
+    "priority": "medium",
+    "status": "analyzing",
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T10:53:05.470Z",
+    "updated_at": "2026-03-28T10:59:18.311Z",
+    "next_steps": "[\"确认待澄清问题\",\"输出数据模型设计\",\"提供SQL取数逻辑\",\"设计报表原型\"]",
+    "report": "# 📋 需求分析报告\n\n## 1. 需求概述\n\n\n**业务目标**: \n\n## 4. 下一步行动\n\n1. 确认待澄清问题\n2. 输出数据模型设计\n3. 提供SQL取数逻辑\n4. 设计报表原型\n\n---\n*本报告由需求分析 Agent 生成，置信度 80%*\n",
+    "report_confidence": 0.8
+  },
+  {
+    "id": "6bee77db-f780-4a82-a1f2-33d0c285e086",
+    "title": "1、人力、车型等；2、部门和项目；3、否",
+    "description": "1、人力、车型等；2、部门和项目；3、否",
+    "summary": "1、人力、车型等；2、部门和项目；3、否",
+    "metrics": [],
+    "dimensions": [],
+    "suggestions": [
+      "<think>\n用户回复了三个问题：\n1. 成本类型：人力、车型等\n2. 管控层级：部门和项目\n3. 是否需要成本分摊：否\n\n现在我需要：\n1. 总结理解到的需求\n2. 完善指标定义\n3. 给出更具体的分析方案\n\n人力成本和车型成本是典型的，可能是汽车行业或者有车辆运营业务的企业。\n\n让我整理一下：\n- 成本类型：人力成本、车型成本（可能包括车辆折旧、租赁、维护等）\n- 分析维度：部门、项目\n- "
+    ],
+    "source": "agent",
+    "agent_id": "analyst",
+    "priority": "medium",
+    "status": "draft",
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T10:55:15.857Z",
+    "updated_at": "2026-03-28T10:55:15.857Z"
+  },
+  {
+    "id": "1df6272a-2c4e-4502-91e1-f5d6069d8b62",
+    "title": "你是什么大模型",
+    "description": "你是什么大模型",
+    "summary": "你是什么大模型",
+    "metrics": [],
+    "dimensions": [],
+    "suggestions": [
+      "【需求分析】\n\n您好！我是需求分析 Agent，负责将您的业务需求转化为结构化的指标定义。\n\n**我可以帮您：**\n- 📝 理解并结构化模糊的业务需求\n- 📊 定义指标口径（计算逻辑、维度、粒度）\n- 🔍 校验指标与已有定义的冲突\n- 📋 推荐分析方案和可视化类型\n\n**请描述您的业务需求，例如：**\n- \"我想看每天的销售情况\"\n- \"需要监控用户活跃度和留存\"\n- \"分析各地区的收入构"
+    ],
+    "source": "agent",
+    "agent_id": "analyst",
+    "priority": "medium",
+    "status": "draft",
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T11:07:55.154Z",
+    "updated_at": "2026-03-28T11:07:55.154Z"
+  },
+  {
+    "id": "be8894fc-d69e-46dc-9ab3-01fefc132ca5",
+    "title": "有什么能力",
+    "description": "有什么能力",
+    "summary": "有什么能力",
+    "metrics": [],
+    "dimensions": [],
+    "suggestions": [
+      "【需求分析】\n\n您好！我是需求分析 Agent，负责将您的业务需求转化为结构化的指标定义。\n\n**我可以帮您：**\n- 📝 理解并结构化模糊的业务需求\n- 📊 定义指标口径（计算逻辑、维度、粒度）\n- 🔍 校验指标与已有定义的冲突\n- 📋 推荐分析方案和可视化类型\n\n**请描述您的业务需求，例如：**\n- \"我想看每天的销售情况\"\n- \"需要监控用户活跃度和留存\"\n- \"分析各地区的收入构"
+    ],
+    "source": "agent",
+    "agent_id": "analyst",
+    "priority": "medium",
+    "status": "draft",
+    "created_by": "7c346861-d616-41c2-b0f4-6e0ad0046024",
+    "created_at": "2026-03-28T11:08:25.075Z",
+    "updated_at": "2026-03-28T11:08:25.075Z"
+  }
+]

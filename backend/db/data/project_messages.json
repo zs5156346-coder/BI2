@@ -1,0 +1,56 @@
+[
+  {
+    "id": "8ee427d5-5d0e-4368-9513-ee03137f0a6e",
+    "project_id": "ce7ea5ee-5671-4984-834b-ab3240dd923e",
+    "agent_id": "analyst",
+    "role": "system",
+    "content": "启动 需求分析，需求：「做一个车企的质量分析看板」",
+    "phase": "analysis",
+    "created_at": "2026-03-28T09:55:15.012Z"
+  },
+  {
+    "id": "ce4d5ce3-843d-4f5b-a970-d5de2775c4f4",
+    "project_id": "ce7ea5ee-5671-4984-834b-ab3240dd923e",
+    "agent_id": "analyst",
+    "role": "system",
+    "content": "启动 需求分析，需求：「做一个车企的质量分析看板」",
+    "phase": "analysis",
+    "created_at": "2026-03-28T09:55:39.568Z"
+  },
+  {
+    "id": "1b12692d-a972-48f7-b182-eec157934723",
+    "project_id": "ce7ea5ee-5671-4984-834b-ab3240dd923e",
+    "agent_id": "analyst",
+    "role": "system",
+    "content": "启动 需求分析，需求：「做一个车企的质量分析看板」",
+    "phase": "analysis",
+    "created_at": "2026-03-28T10:31:11.037Z"
+  },
+  {
+    "id": "74aad338-c87b-4e5a-bab3-e4fcc2dc0d13",
+    "project_id": "46a99106-fb5e-487a-b8fc-414301049763",
+    "agent_id": "analyst",
+    "role": "system",
+    "content": "启动 需求分析，需求：「门店日销售分析」",
+    "phase": "analysis",
+    "created_at": "2026-03-28T10:32:02.636Z"
+  },
+  {
+    "id": "fa88473f-40b9-45ac-9d2a-72ab91fb99c4",
+    "project_id": "ce7ea5ee-5671-4984-834b-ab3240dd923e",
+    "agent_id": "analyst",
+    "role": "system",
+    "content": "启动 需求分析，需求：「做一个车企的质量分析看板」",
+    "phase": "analysis",
+    "created_at": "2026-03-28T10:34:26.012Z"
+  },
+  {
+    "id": "1cbf324f-b576-4ba3-bf2f-2023127fe240",
+    "project_id": "8e3c56a3-8677-4a4e-99e1-a292bd4b89ef",
+    "agent_id": "analyst",
+    "role": "system",
+    "content": "启动 需求分析，需求：「用户留存分析需求」",
+    "phase": "analysis",
+    "created_at": "2026-03-28T10:48:44.162Z"
+  }
+]
