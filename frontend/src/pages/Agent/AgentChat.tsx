@@ -97,11 +97,6 @@ export default function AgentChat() {
 
       const assistantMsg: Message = { id: data.id || Date.now().toString(), role: 'assistant', content: data.response, timestamp: data.timestamp }
       setMessages(prev => [...prev, assistantMsg])
-      await fetch(`${API}/agents/${agentId}/messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'assistant', content: data.response })
-      })
     } catch (err: any) {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: `❌ 发生错误: ${err.message}` }])
     } finally {
@@ -361,7 +356,7 @@ export default function AgentChat() {
               </div>
               {/* 需求分析 agent 的 assistant 回复下方显示确认导入按钮（评审文档、UAT文档、非需求内容不显示） */}
               {agentId === 'analyst' && msg.role === 'assistant' && !contextData?.id && !['review_document', 'uat_document'].includes(msg.metadata?.type) && (() => {
-                // 过滤闲聊/使用指南类回复，只在包含业务分析内容时才显示导入按钮
+                if (importedIds.has(msg.id)) return false;
                 const content = msg.content || '';
                 const hasBusinessKeyword = /分析|报表|指标|看板|需求|监控|统计|数据|计算|维度|度量|公式|建议.*指标|建议.*维度|业务|转化|留存|活跃|趋势|对比|占比|同比|环比/.test(content);
                 const isGuideOrChatty = /我可以帮你|请描述|请告诉我|你可以问我|我负责|我会|欢迎使用/.test(content);
