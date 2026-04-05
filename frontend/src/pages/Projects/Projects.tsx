@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Plus, GitBranch, Clock, CheckCircle2, ChevronRight, Play, Bot, X, ArrowRight, BarChart3 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, GitBranch, Clock, CheckCircle2, ChevronRight, Play, Bot, X, ArrowRight, BarChart3, RefreshCw, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import DashboardPreview from '../../components/DashboardPreview'
 
 const API = '/api'
 const token = () => localStorage.getItem('token') || ''
@@ -10,7 +11,8 @@ const PHASES = [
   { id: 'model', label: '数据建模', agent: 'modeler', color: '#8b5cf6', bg: 'bg-purple-500', icon: '🏗️', desc: 'Modeler Agent', next: 'etl' },
   { id: 'etl', label: 'ETL开发', agent: 'etl', color: '#f59e0b', bg: 'bg-amber-500', icon: '⚡', desc: 'ETL Agent', next: 'viz' },
   { id: 'viz', label: '可视化', agent: 'viz', color: '#3b82f6', bg: 'bg-blue-500', icon: '📊', desc: 'Viz Agent', next: 'qa' },
-  { id: 'qa', label: '质量验证', agent: 'qa', color: '#ef4444', bg: 'bg-red-500', icon: '🛡️', desc: 'QA Agent', next: 'ops' },
+  { id: 'qa', label: '质量验证', agent: 'qa', color: '#ef4444', bg: 'bg-red-500', icon: '🛡️', desc: 'QA Agent', next: 'uat' },
+  { id: 'uat', label: 'UAT验证', agent: 'uat', color: '#14b8a6', bg: 'bg-teal-500', icon: '✅', desc: 'UAT Agent', next: 'ops' },
   { id: 'ops', label: '上线运维', agent: 'ops', color: '#6b7280', bg: 'bg-gray-500', icon: '⚙️', desc: 'Ops Agent', next: null },
 ]
 
@@ -21,7 +23,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 }
 
 const REQ_STATUS: Record<string, string> = {
-  draft: '草稿', analyzing: '分析中', designed: '已建模',
+  imported: '已导入', analyzing: '需求澄清', delivering: '交付中', designed: '已建模',
   developing: '开发中', completed: '已完成', rejected: '已驳回',
 }
 
@@ -50,6 +52,7 @@ export default function Projects() {
       fetch(`${API}/requirements`, { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.json()),
     ]).then(([detail, reqs]) => {
       setProjectDetail(detail)
+      setSelectedProject(detail) // 保持 selectedProject 与服务端最新数据同步
       // 过滤出与当前项目相关的需求（从消息中找，或全部展示）
       setRequirements(reqs)
     }).catch(console.error)
@@ -71,18 +74,91 @@ export default function Projects() {
     loadProjects()
   }
 
-  // 开始某个阶段
+  const [pipelineRunning, setPipelineRunning] = useState(false)
+  const [pipelineStatus, setPipelineStatus] = useState<string>('')
+  const [deployingId, setDeployingId] = useState<string | null>(null)
+
+  // 启动自动流水线（model -> etl -> viz -> qa 串行跑完）
+  const startPipeline = async () => {
+    if (!selectedProject || pipelineRunning) return
+    setPipelineRunning(true)
+    setPipelineStatus('正在启动流水线...')
+    try {
+      const res = await fetch(`${API}/projects/${selectedProject.id}/run-pipeline`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+      })
+      if (res.ok) {
+        // 轮询项目状态直到流水线完成
+        const poll = async () => {
+          const detail = await fetch(`${API}/projects/${selectedProject.id}`, { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.json())
+          const phaseLabel: Record<string, string> = { model: '数据建模', etl: 'ETL开发', viz: '可视化', qa: '质量验证', uat: '等待UAT验收' }
+          setPipelineStatus(phaseLabel[detail.current_phase] ? `${phaseLabel[detail.current_phase]}中...` : '流水线完成')
+          setProjectDetail(detail)
+          setSelectedProject((prev: any) => ({ ...prev, current_phase: detail.current_phase, progress: detail.progress, status: detail.status }))
+          if (detail.current_phase !== 'uat') {
+            setTimeout(poll, 2000)
+          } else {
+            setPipelineRunning(false)
+            setPipelineStatus('')
+            loadDetail(selectedProject)
+          }
+        }
+        setTimeout(poll, 2000)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error || '启动流水线失败')
+        setPipelineRunning(false)
+        setPipelineStatus('')
+      }
+    } catch {
+      alert('启动流水线失败')
+      setPipelineRunning(false)
+      setPipelineStatus('')
+    }
+  }
+
+  // 开始某个阶段（用于 uat/ops 手动操作）
   const startPhase = async (phase: any) => {
     if (!selectedProject) return
 
-    // 如果还没有选需求，弹出需求选择
+    if (phase.id === 'uat' || phase.id === 'ops') {
+      const boundReq = selectedProject.requirement_id
+        ? requirements.find((r: any) => r.id === selectedProject.requirement_id)
+        : activeRequirement
+
+      // 发起 UAT 验收：先调后端生成验收文档，再跳转
+      if (phase.id === 'uat' && selectedProject.requirement_id) {
+        try {
+          await fetch(`${API}/projects/${selectedProject.id}/start-uat`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+          })
+        } catch {}
+      }
+
+      const context = encodeURIComponent(JSON.stringify({
+        requirement: boundReq || {},
+        project_id: selectedProject.id,
+        project_name: selectedProject.name,
+      }))
+      window.location.href = `/agents/${phase.agent}`
+      return
+    }
+
+    // 非 ops 阶段：如果有绑定需求直接启动流水线
+    if (selectedProject.requirement_id) {
+      startPipeline()
+      return
+    }
+
+    // 没绑定需求的项目，弹出需求选择
     if (!activeRequirement) {
       setPendingPhase(phase)
       setShowFlowModal(true)
       return
     }
 
-    // 直接跳转到 Agent 对话，携带需求上下文
     const context = encodeURIComponent(JSON.stringify({
       requirement: activeRequirement,
       project_id: selectedProject.id,
@@ -91,19 +167,41 @@ export default function Projects() {
     window.open(`/agents/${phase.agent}?ctx=${context}`, '_blank')
   }
 
+  // 一键部署（Vercel MCP 模拟）
+  const deployToVercel = async () => {
+    if (!selectedProject) return
+    setDeployingId(selectedProject.id)
+    try {
+      const res = await fetch(`${API}/projects/${selectedProject.id}/deploy`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (data.success) {
+        // 更新本地状态，显示访问地址
+        setSelectedProject({ ...selectedProject, current_phase: 'ops', progress: 100, status: 'completed', deploy_url: data.url })
+        loadProjects()
+      } else {
+        alert(data.error || '部署失败')
+      }
+    } catch (e) {
+      alert('部署请求失败')
+    } finally {
+      setDeployingId(null)
+    }
+  }
+
   // 确认需求后启动流程
   const confirmStart = () => {
     if (!activeRequirement || !pendingPhase) return
     setShowFlowModal(false)
 
-    // 更新项目状态
     fetch(`${API}/projects/${selectedProject.id}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ current_phase: pendingPhase.id, progress: PHASE_PROGRESS[pendingPhase.id] })
     })
 
-    // 记录项目消息
     fetch(`${API}/projects/${selectedProject.id}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
@@ -115,7 +213,6 @@ export default function Projects() {
       })
     })
 
-    // 跳转到 Agent
     const ctx = encodeURIComponent(JSON.stringify({
       requirement: activeRequirement,
       project_id: selectedProject.id,
@@ -124,12 +221,18 @@ export default function Projects() {
     window.open(`/agents/${pendingPhase.agent}?ctx=${ctx}`, '_blank')
 
     setPendingPhase(null)
+    // 刷新项目列表以更新左侧状态
+    loadProjects()
   }
 
   const phaseProgress = (projectPhase: string, phaseId: string) => {
+    // 处理最后一个阶段已完成的情况
+    if (projectPhase === 'ops' && selectedProject?.status === 'completed') {
+      return 'completed'
+    }
     const pIdx = PHASES.findIndex(p => p.id === projectPhase)
     const cIdx = PHASES.findIndex(p => p.id === phaseId)
-    if (cIdx < pIdx) return 'done'
+    if (cIdx < pIdx) return 'completed'
     if (cIdx === pIdx) return 'current'
     return 'pending'
   }
@@ -221,69 +324,150 @@ export default function Projects() {
 
             {/* 阶段流程图 */}
             <div className="bg-dark-card border border-dark-border rounded-xl p-5">
-              <h3 className="font-semibold text-white mb-5 flex items-center gap-2">
+              <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
                 <GitBranch size={16} className="text-indigo-400" />
                 BI 交付流程
-                <span className="text-xs text-slate-500 font-normal ml-2">
-                  {activeRequirement ? '→ 已选需求，可直接启动各环节' : '→ 请先从下方选择一个需求'}
-                </span>
               </h3>
+              {pipelineStatus && (
+                <div className="mb-4 px-3 py-2 bg-indigo-900/20 border border-indigo-700/30 rounded-lg text-xs text-indigo-400 flex items-center gap-2">
+                  <RefreshCw size={12} className="animate-spin" /> {pipelineStatus}
+                </div>
+              )}
               <div className="flex items-center overflow-x-auto pb-2">
                 {PHASES.map((phase, idx) => {
                   const status = phaseProgress(selectedProject.current_phase, phase.id)
+                  const isBound = !!selectedProject.requirement_id
+                  const isAnalysis = phase.id === 'analysis'
+                  const isOps = phase.id === 'ops'
+                  const isUat = phase.id === 'uat'
+                  const isAutoPhase = ['model', 'etl', 'viz', 'qa'].includes(phase.id)
+
                   return (
                     <div key={phase.id} className="flex items-center flex-shrink-0">
                       <div className="flex flex-col items-center w-28">
                         <div className={`relative w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-2 transition-all ${
-                          status === 'done'
+                          status === 'completed'
                             ? 'bg-green-600/20 border-2 border-green-500'
                             : status === 'current'
                             ? `bg-opacity-20 border-2`
                             : 'bg-dark-bg border-2 border-dark-border opacity-50'
                         }`} style={status === 'current' ? { backgroundColor: `${phase.color}20`, borderColor: phase.color } : {}}>
-                          {status === 'done' ? <CheckCircle2 size={24} className="text-green-400" /> : phase.icon}
-                          {status === 'current' && (
+                          {status === 'completed' ? <CheckCircle2 size={24} className="text-green-400" /> : phase.icon}
+                          {status === 'current' && !isOps && pipelineRunning && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse bg-indigo-500"></div>
+                          )}
+                          {status === 'current' && (isOps || !pipelineRunning) && (
                             <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: phase.color }}></div>
                           )}
                         </div>
                         <span className={`text-xs font-medium mb-1 ${
-                          status === 'done' ? 'text-green-400' : status === 'current' ? 'text-white' : 'text-slate-500'
-                        }`}>{phase.label}</span>
-                        <span className="text-xs text-slate-600">{phase.desc}</span>
-                        {status !== 'done' && (
-                          <button
-                            onClick={() => startPhase(phase)}
-                            disabled={status === 'pending'}
-                            className={`mt-2 w-full py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                              status === 'current'
-                                ? 'bg-primary-600 text-white hover:bg-primary-500 cursor-pointer'
-                                : 'bg-dark-bg text-slate-600 cursor-not-allowed'
-                            }`}>
-                            {status === 'current' ? <><Play size={10} /> 启动</> : '等待'}
+                            status === 'completed' ? 'text-green-400' : status === 'current' ? 'text-white' : 'text-slate-500'
+                          }`}>{isAnalysis && isBound && status === 'completed' ? '已评审' : phase.label}</span>
+                          <span className="text-xs text-slate-600">{phase.desc}</span>
+
+                          {/* 需求分析阶段：已绑定需求则直接显示完成 */}
+                          {isAnalysis && isBound && status === 'completed' && (
+                            <span className="mt-2 w-full py-1.5 rounded-lg text-xs font-medium text-green-400 bg-green-900/20 flex items-center justify-center gap-1">
+                              <CheckCircle2 size={10} /> 已评审
+                            </span>
+                          )}
+
+                        {/* 自动阶段（model/etl/viz/qa）：显示自动化状态 */}
+                        {isAutoPhase && isBound && status === 'completed' && (
+                          <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-green-400 bg-green-900/20 flex items-center justify-center gap-1">
+                            <CheckCircle2 size={10} /> 已完成
+                          </span>
+                        )}
+                        {isAutoPhase && isBound && status === 'current' && (
+                          pipelineRunning ? (
+                            <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-indigo-400 bg-indigo-900/20 flex items-center justify-center gap-1">
+                              <RefreshCw size={10} className="animate-spin" /> 执行中
+                            </span>
+                          ) : (
+                            <button onClick={startPipeline}
+                              className="mt-2 w-full py-1.5 rounded-lg text-xs font-medium bg-primary-600 text-white hover:bg-primary-500 flex items-center justify-center gap-1">
+                              <Play size={10} /> 启动流水线
+                            </button>
+                          )
+                        )}
+                        {isAutoPhase && isBound && status === 'pending' && (
+                          <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-slate-600 bg-dark-bg flex items-center justify-center">自动</span>
+                        )}
+
+                        {/* UAT 阶段：手动验收 */}
+                        {isUat && isBound && status === 'current' && (
+                          <button onClick={() => startPhase(phase)}
+                            className="mt-2 w-full py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-500 flex items-center justify-center gap-1">
+                            <Play size={10} /> 发起验收
                           </button>
                         )}
-                        {status === 'done' && (
-                          <button
-                            onClick={() => startPhase(phase)}
-                            className="mt-2 w-full py-1.5 rounded-lg text-xs bg-green-900/30 text-green-400 hover:bg-green-900/50 flex items-center justify-center gap-1 transition-colors">
-                            <ArrowRight size={10} /> 重跑
+                        {isUat && isBound && status === 'completed' && (
+                          <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-green-400 bg-green-900/20 flex items-center justify-center gap-1">
+                            <CheckCircle2 size={10} /> 已通过
+                          </span>
+                        )}
+                        {isUat && isBound && status === 'pending' && (
+                          <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-slate-600 bg-dark-bg flex items-center justify-center">等待</span>
+                        )}
+
+                        {/* Ops 阶段：手动操作 -> Vercel 一键部署 */}
+                        {isOps && status === 'current' && (
+                          <button 
+                            onClick={deployToVercel}
+                            disabled={deployingId === selectedProject.id}
+                            className="mt-2 w-full py-1.5 rounded-lg text-xs font-medium bg-primary-600 text-white hover:bg-primary-500 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {deployingId === selectedProject.id ? (
+                              <><RefreshCw size={10} className="animate-spin" /> 部署中...</>
+                            ) : (
+                              <><Play size={10} /> 一键上线(Vercel)</>
+                            )}
                           </button>
+                        )}
+                        {isOps && status === 'completed' && (
+                          <div className="mt-2 w-full flex flex-col gap-1">
+                            <span className="w-full py-1.5 rounded-lg text-xs text-green-400 bg-green-900/20 flex items-center justify-center gap-1">
+                              <CheckCircle2 size={10} /> 已上线
+                            </span>
+                            {selectedProject.dashboard && (
+                              <Link to={`/projects/${selectedProject.id}/dashboard`} state={{ from: '/projects' }} target="_blank" rel="noreferrer" 
+                                className="w-full py-1.5 rounded-lg text-xs text-blue-400 bg-blue-900/20 hover:bg-blue-800/30 flex items-center justify-center gap-1 transition-colors">
+                                <Eye size={10} /> 访问看板
+                              </Link>
+                            )}
+                          </div>
+                        )}
+                        {isOps && status === 'pending' && (
+                          <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-slate-600 bg-dark-bg flex items-center justify-center">等待</span>
+                        )}
+
+                        {/* 未绑定需求的项目：保持原来的按钮逻辑 */}
+                        {!isBound && !isOps && (
+                          <>
+                            {status === 'current' && (
+                              <button onClick={() => startPhase(phase)}
+                                className="mt-2 w-full py-1.5 rounded-lg text-xs font-medium bg-primary-600 text-white hover:bg-primary-500 flex items-center justify-center gap-1">
+                                <Play size={10} /> 启动
+                              </button>
+                            )}
+                            {status === 'completed' && (
+                              <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-green-400 bg-green-900/20 flex items-center justify-center gap-1">
+                                <CheckCircle2 size={10} /> 完成
+                              </span>
+                            )}
+                            {status === 'pending' && (
+                              <span className="mt-2 w-full py-1.5 rounded-lg text-xs text-slate-600 bg-dark-bg flex items-center justify-center">等待</span>
+                            )}
+                          </>
                         )}
                       </div>
                       {idx < PHASES.length - 1 && (
-                        <div className={`h-0.5 flex-1 mx-1 mb-8 w-8 ${
-                          phaseProgress(selectedProject.current_phase, PHASES[idx + 1].id) !== 'pending'
-                            ? ''
-                            : ''
-                        }`}>
+                        <div className="h-0.5 flex-1 mx-1 mb-8 w-8">
                           <div className={`h-full rounded ${
-                            PHASES[idx + 1] && phaseProgress(selectedProject.current_phase, PHASES[idx + 1].id) !== 'pending'
-                              ? ''
-                              : 'bg-dark-border'
+                            phaseProgress(selectedProject.current_phase, PHASES[idx + 1].id) !== 'pending'
+                              ? '' : 'bg-dark-border'
                           }`} style={{
-                            backgroundColor: phaseProgress(selectedProject.current_phase, PHASES[idx + 1].id) !== 'pending' && PHASES[idx + 1]
-                              ? `${phase.color}60`
-                              : undefined
+                            backgroundColor: phaseProgress(selectedProject.current_phase, PHASES[idx + 1].id) !== 'pending'
+                              ? `${phase.color}60` : undefined
                           }}></div>
                         </div>
                       )}
@@ -293,21 +477,46 @@ export default function Projects() {
               </div>
             </div>
 
-            {/* 需求选择区 */}
+            {/* 需求关联区 */}
             <div className="bg-dark-card border border-dark-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <BarChart3 size={16} className="text-emerald-400" />
                   关联需求
                 </h3>
-                <span className="text-xs text-slate-500">{requirements.length} 个需求</span>
+                {!selectedProject.requirement_id && <span className="text-xs text-slate-500">{requirements.length} 个需求</span>}
               </div>
-              {requirements.length === 0 ? (
+              {selectedProject.requirement_id ? (() => {
+                const boundReq = requirements.find(r => r.id === selectedProject.requirement_id)
+                return boundReq ? (
+                  <div className="p-3 rounded-xl bg-indigo-900/20 border border-indigo-500/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 size={14} className="text-indigo-400" />
+                      <span className="text-xs text-indigo-400 font-medium">已绑定需求</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        boundReq.status === 'delivering' ? 'bg-amber-900/50 text-amber-400'
+                        : boundReq.status === 'completed' ? 'bg-green-900/50 text-green-400'
+                        : 'bg-slate-700 text-slate-400'
+                      }`}>{REQ_STATUS[boundReq.status] || boundReq.status}</span>
+                    </div>
+                    <p className="text-sm text-white font-medium">{boundReq.title}</p>
+                    {boundReq.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{boundReq.description.substring(0, 100)}</p>}
+                    {boundReq.metrics?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {boundReq.metrics.slice(0, 3).map((m: string) => (
+                          <span key={m} className="text-xs px-1.5 py-0.5 rounded bg-emerald-900/20 text-emerald-400">{m}</span>
+                        ))}
+                        {boundReq.metrics.length > 3 && <span className="text-xs text-slate-500">+{boundReq.metrics.length - 3}</span>}
+                      </div>
+                    )}
+                  </div>
+                ) : <p className="text-sm text-slate-500 text-center py-4">关联需求已删除</p>
+              })() : requirements.length === 0 ? (
                 <div className="text-center py-6">
                   <p className="text-sm text-slate-500 mb-3">还没有需求</p>
                   <Link to="/agents/analyst"
                     className="text-xs px-4 py-2 bg-indigo-900/30 border border-indigo-700/50 rounded-lg text-indigo-400 hover:text-indigo-300 inline-block">
-                    💡 去向需求分析 Agent 提问
+                    去向需求分析 Agent 提问
                   </Link>
                 </div>
               ) : (
@@ -350,6 +559,11 @@ export default function Projects() {
                 </div>
               )}
             </div>
+
+            {/* 看板预览 */}
+            {projectDetail?.dashboard && (
+              <DashboardPreview dashboard={projectDetail.dashboard} />
+            )}
 
             {/* 最近活动 */}
             <div className="bg-dark-card border border-dark-border rounded-xl p-5">
@@ -480,5 +694,7 @@ export default function Projects() {
 }
 
 const PHASE_PROGRESS: Record<string, number> = {
-  analysis: 15, model: 35, etl: 55, viz: 75, qa: 90, ops: 100,
+  analysis: 10, model: 25, etl: 45, viz: 60, qa: 75, uat: 90, ops: 100,
 }
+
+

@@ -1,6 +1,13 @@
 import express from 'express';
-import { findAll, insert } from '../db/init.js';
+import { findAll, insert, write } from '../db/init.js';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const AGENTS_FILE = join(__dirname, '../db/data/agents.json');
 
 const router = express.Router();
 
@@ -12,6 +19,21 @@ router.get('/:agentId', (req, res) => {
   const agent = findAll('agents').find(a => a.id === req.params.agentId);
   if (!agent) return res.status(404).json({ error: 'Agent不存在' });
   res.json(agent);
+});
+
+// 设置 Agent 的模型
+router.put('/:agentId/model', (req, res) => {
+  const { model } = req.body;
+  if (!model) return res.status(400).json({ error: '缺少 model 参数' });
+
+  const agents = findAll('agents');
+  const idx = agents.findIndex(a => a.id === req.params.agentId);
+  if (idx === -1) return res.status(404).json({ error: 'Agent不存在' });
+
+  agents[idx] = { ...agents[idx], model, updated_at: new Date().toISOString() };
+  fs.writeFileSync(AGENTS_FILE, JSON.stringify(agents, null, 2), 'utf-8');
+
+  res.json({ message: '模型已更新', model, agent_id: req.params.agentId });
 });
 
 router.post('/:agentId/messages', (req, res) => {

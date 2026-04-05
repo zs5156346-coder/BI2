@@ -11,7 +11,7 @@ const CONFIG_FILE = join(__dirname, '../config/models.json');
 
 const QCLAW_PROXY = 'http://127.0.0.1:19000/proxy/llm';
 const QCLAW_KEY = '__QCLAW_AUTH_GATEWAY_MANAGED__';
-const DEFAULT_TIMEOUT = 60000;
+const DEFAULT_TIMEOUT = 15000;
 const CACHE_TTL = 5 * 60 * 1000;
 
 function readConfig() {
@@ -32,14 +32,20 @@ class LLMService {
   }
 
   async chat(messages, options = {}) {
-    const active = options.provider === 'qclaw' ? null : getActiveProvider();
+    // 优先级1: caller 直接传入 provider 对象（如测试连通性时）
+    if (options.provider && typeof options.provider === 'object' && options.provider.baseUrl) {
+      return this._chatCustom(messages, options);
+    }
+
+    // 优先级2: 根据 defaultProvider 配置决定走哪条链路
+    const active = getActiveProvider();
 
     // 模式1：使用 QClaw 内置代理
     if (!active) {
       return this._chatQClaw(messages, options);
     }
 
-    // 模式2：使用自定义 API Key
+    // 模式2：使用自定义 API Key（options.model 覆盖 provider 的默认模型）
     return this._chatCustom(messages, { ...options, provider: active });
   }
 
@@ -69,7 +75,11 @@ class LLMService {
         throw new Error(`QClaw LLM error: ${response.status} - ${err}`);
       }
       const data = await response.json();
-      return data.choices?.[0]?.message?.content || '';
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error(`LLM 返回内容为空: ${JSON.stringify(data).slice(0, 200)}`);
+      }
+      return content;
     } catch (err) {
       clearTimeout(timer);
       if (err.name === 'AbortError') throw new Error('LLM 请求超时');
@@ -82,7 +92,7 @@ class LLMService {
     const provider = options.provider;
     const apiKey = provider.apiKey;
     const baseUrl = provider.baseUrl;
-    const model = provider.model || 'gpt-4o';
+    const model = options.model || provider.model || 'gpt-4o';
 
     if (!apiKey || !baseUrl) {
       // fallback 到 QClaw
@@ -139,12 +149,20 @@ class LLMService {
 
       // 解析不同格式
       if (provider.id === 'anthropic' || baseUrl.includes('anthropic')) {
-        return data.content?.[0]?.text || '';
+        const content = data.content?.[0]?.text;
+        if (!content) throw new Error(`Anthropic 返回内容为空: ${JSON.stringify(data).slice(0, 200)}`);
+        return content;
       }
       if (provider.id === 'gemini' || baseUrl.includes('generativelanguage')) {
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!content) throw new Error(`Gemini 返回内容为空: ${JSON.stringify(data).slice(0, 200)}`);
+        return content;
       }
-      return data.choices?.[0]?.message?.content || '';
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error(`LLM 返回内容为空: ${JSON.stringify(data).slice(0, 200)}`);
+      }
+      return content;
     } catch (err) {
       clearTimeout(timer);
       if (err.name === 'AbortError') throw new Error('LLM 请求超时');

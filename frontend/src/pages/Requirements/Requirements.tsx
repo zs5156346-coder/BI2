@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, ChevronRight, Tag, Clock, CheckCircle2, X, Edit2, Trash2, BarChart3, Bot, ArrowRight, FileText } from 'lucide-react'
+import { Plus, Search, ChevronRight, Tag, Clock, CheckCircle2, X, Edit2, Trash2, BarChart3, Bot, ArrowRight, FileText, RefreshCw, Send, Download } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const API = '/api'
 const token = () => localStorage.getItem('token') || ''
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: '草稿', color: 'bg-slate-700 text-slate-300' },
-  analyzing: { label: '分析中', color: 'bg-indigo-900/50 text-indigo-400' },
+  imported: { label: '已导入', color: 'bg-cyan-900/50 text-cyan-400' },
+  analyzing: { label: '需求澄清', color: 'bg-indigo-900/50 text-indigo-400' },
+  delivering: { label: '交付中', color: 'bg-amber-900/50 text-amber-400' },
   designed: { label: '已建模', color: 'bg-purple-900/50 text-purple-400' },
   developing: { label: '开发中', color: 'bg-amber-900/50 text-amber-400' },
   completed: { label: '已完成', color: 'bg-green-900/50 text-green-400' },
@@ -30,6 +31,9 @@ export default function Requirements() {
   const [detailTab, setDetailTab] = useState<'info' | 'report'>('info')
   const [reportContent, setReportContent] = useState<any>(null)
   const [newForm, setNewForm] = useState({ title: '', description: '', priority: 'medium' })
+  const [generatingReport, setGeneratingReport] = useState(false)
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [approving, setApproving] = useState(false)
 
   const load = () => {
     const params = new URLSearchParams()
@@ -217,16 +221,98 @@ export default function Requirements() {
 
           {/* 底部操作 */}
           <div className="p-4 border-t border-dark-border space-y-2">
-            {selectedReq.agent_id && (
-              <Link to={`/agents/${selectedReq.agent_id}?req=${selectedReq.id}`}
-                className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-900/30 border border-indigo-700/50 rounded-xl text-indigo-400 hover:text-indigo-300 text-sm transition-colors">
-                <Bot size={14} /> 继续分析 <ArrowRight size={12} />
-              </Link>
+            {selectedReq.status === 'delivering' ? (
+              <div className="flex items-center justify-center gap-2 w-full py-2 bg-amber-900/20 border border-amber-700/50 rounded-xl text-amber-400 text-sm">
+                <Clock size={14} /> 交付中
+                {selectedReq.metrics_imported && (
+                  <span className="ml-auto text-emerald-400 text-xs">
+                    ✓ 已导入 {selectedReq.metrics_imported_count || 0} 个指标
+                  </span>
+                )}
+              </div>
+            ) : selectedReq.report ? (
+              <div className="space-y-2">
+                {/* 发起评审按钮 */}
+                {selectedReq.status !== 'analyzing' && (
+                  <button onClick={async () => {
+                    if (submittingReview) return
+                    setSubmittingReview(true)
+                    try {
+                      const res = await fetch(`${API}/requirements/${selectedReq.id}/start-review`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+                      })
+                      if (res.ok) {
+                        const data = await res.json()
+                        load()
+                        window.location.href = `/agents/analyst`
+                      } else {
+                        const err = await res.json().catch(() => ({}))
+                        alert(err.error || '发起评审失败')
+                      }
+                    } catch { alert('发起评审失败') }
+                    finally { setSubmittingReview(false) }
+                  }} disabled={submittingReview}
+                    className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-xl text-emerald-400 hover:text-emerald-300 text-sm transition-colors disabled:opacity-50">
+                    {submittingReview ? <><RefreshCw size={14} className="animate-spin" /> 发起中...</> : <><Send size={14} /> 发起需求评审</>}
+                  </button>
+                )}
+                {/* 评审通过并导入指标按钮 */}
+                {selectedReq.status === 'analyzing' && (
+                  <button onClick={async () => {
+                    if (approving) return
+                    if (!confirm("确认通过本次需求评审？\n\n通过后将报告中的指标清单同步导入到指标管理模块。")) return
+                    setApproving(true)
+                    try {
+                      const res = await fetch(`${API}/requirements/${selectedReq.id}/approve-review`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+                      })
+                      if (res.ok) {
+                        const data = await res.json()
+                        alert(data.message)
+                        load()
+                        setSelectedReq(r => r ? { ...r, status: 'delivering', metrics_imported: true, metrics_imported_count: data.imported_count } : null)
+                      } else {
+                        const err = await res.json().catch(() => ({}))
+                        alert(err.error || '评审通过失败')
+                      }
+                    } catch { alert('评审通过失败') }
+                    finally { setApproving(false) }
+                  }} disabled={approving}
+                    className="flex items-center justify-center gap-2 w-full py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+                    {approving ? <><RefreshCw size={14} className="animate-spin" /> 导入中...</> : <><Download size={14} /> 评审通过并导入指标</>}
+                  </button>
+                )}
+              </div>
+
+            ) : (
+              <button onClick={async () => {
+                if (generatingReport) return
+                setGeneratingReport(true)
+                try {
+                  const res = await fetch(`${API}/requirements/report/generate`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requirement_id: selectedReq.id, agent_id: selectedReq.agent_id || 'analyst', conversation: [] })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    setReportContent(data.report ? { ...data.report.report, report_confidence: data.report.confidence, report: data.report.readableReport } : null)
+                    setDetailTab('report')
+                    load()
+                  } else {
+                    const err = await res.json().catch(() => ({}))
+                    alert(err.error || '生成报告失败')
+                  }
+                } catch { alert('生成报告失败') }
+                finally { setGeneratingReport(false) }
+              }}
+                disabled={generatingReport}
+                className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-900/30 border border-indigo-700/50 rounded-xl text-indigo-400 hover:text-indigo-300 text-sm transition-colors disabled:opacity-50">
+                {generatingReport ? <><RefreshCw size={14} className="animate-spin" /> 报告生成中...</> : <><FileText size={14} /> 生成需求分析报告</>}
+              </button>
             )}
-            <button onClick={() => handleStatusChange(selectedReq.id, 'analyzing')}
-              className="flex items-center justify-center gap-2 w-full py-2 bg-dark-bg border border-dark-border rounded-xl text-slate-400 hover:text-white text-sm transition-colors">
-              📋 转为分析中
-            </button>
           </div>
         </div>
       )}
@@ -354,11 +440,7 @@ function ReportTab({ req, report, onLoad }: { req: any; report: any; onLoad: (r:
       <div className="text-center py-12">
         <div className="text-4xl mb-4">📄</div>
         <p className="text-slate-400 text-sm mb-3">尚未生成分析报告</p>
-        <p className="text-xs text-slate-600 mb-4">请先向需求分析 Agent 提问并生成报告</p>
-        <Link to={`/agents/analyst?req=${req.id}`}
-          className="text-xs px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 inline-block">
-          去需求分析 Agent 生成报告
-        </Link>
+        <p className="text-xs text-slate-600">请点击下方「生成需求分析报告」按钮</p>
       </div>
     )
   }
@@ -376,66 +458,94 @@ function ReportTab({ req, report, onLoad }: { req: any; report: any; onLoad: (r:
         </div>
       )}
 
-      {/* 总结 */}
-      {report.summary && (
+      {/* 需求背景 */}
+      {report.background && (
         <div>
-          <label className="text-xs text-slate-400 mb-1 block">📋 需求总结</label>
-          <p className="text-sm text-white">{report.summary}</p>
+          <label className="text-xs text-slate-400 mb-1 block">需求背景</label>
+          <p className="text-sm text-slate-300 leading-relaxed">{report.background}</p>
         </div>
       )}
 
-      {/* 业务目标 */}
-      {report.business_goal && (
+      {/* 需求主题 */}
+      {report.topic && (
         <div>
-          <label className="text-xs text-slate-400 mb-1 block">🎯 业务目标</label>
-          <p className="text-sm text-slate-300">{report.business_goal}</p>
+          <label className="text-xs text-slate-400 mb-1 block">需求主题</label>
+          <p className="text-sm text-white font-medium">{report.topic}</p>
         </div>
       )}
 
-      {/* 指标定义 */}
+      {/* 需求描述 */}
+      {report.description && (
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">需求描述</label>
+          <p className="text-sm text-slate-300 leading-relaxed">{report.description}</p>
+        </div>
+      )}
+
+      {/* 需求价值 */}
+      {report.value && (
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">需求价值</label>
+          <p className="text-sm text-slate-300">{report.value}</p>
+        </div>
+      )}
+
+      {/* 人员信息 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">需求提出人</label>
+          <p className="text-sm text-slate-300">{report.requester || '待确认'}</p>
+        </div>
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">需求使用人</label>
+          <p className="text-sm text-slate-300">{report.users || '待确认'}</p>
+        </div>
+      </div>
+
+      {/* 指标清单 */}
       {report.metrics?.length > 0 && (
         <div>
-          <label className="text-xs text-slate-400 mb-2 block">📊 指标定义</label>
+          <label className="text-xs text-slate-400 mb-2 block">指标清单</label>
           <div className="space-y-2">
             {report.metrics.map((m: any, i: number) => (
-              <div key={i} className="bg-dark-bg rounded-lg p-3 border border-dark-border">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-white">{m.name_cn || m.name}</span>
-                  {m.priority === 'high' && <span className="text-xs text-red-400">🔴</span>}
+              <div key={i} className="bg-dark-bg rounded-lg p-3 border border-dark-border space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white">{m.name}</span>
+                  {m.level && <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-400">{m.level}</span>}
                 </div>
-                {m.expression && <div className="text-xs font-mono text-indigo-400 mb-1">{m.expression}</div>}
-                {m.dimensions?.length > 0 && <div className="text-xs text-slate-500">维度: {m.dimensions.join(', ')}</div>}
-                {m.description && <div className="text-xs text-slate-600 mt-1">{m.description}</div>}
+                {m.domain && <div className="text-xs text-slate-500">业务域: {m.domain}</div>}
+                {m.definition && <div className="text-xs text-slate-400">定义: {m.definition}</div>}
+                {m.formula && <div className="text-xs font-mono text-indigo-400">公式: {m.formula}</div>}
+                {m.logic && <div className="text-xs text-slate-500">取值逻辑: {m.logic}</div>}
+                {m.source_system && <div className="text-xs text-slate-500">来源系统: {m.source_system}</div>}
+                {m.owner && <div className="text-xs text-slate-500">Owner: {m.owner}</div>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* 分析方案 */}
-      {report.analysis_plan && (
+      {/* 报表展示原型 */}
+      {report.report_prototype && (
         <div>
-          <label className="text-xs text-slate-400 mb-1 block">📋 分析方案</label>
-          <p className="text-sm text-slate-300">{report.analysis_plan.approach}</p>
+          <label className="text-xs text-slate-400 mb-1 block">报表展示原型</label>
+          <p className="text-sm text-slate-300 leading-relaxed">{report.report_prototype}</p>
         </div>
       )}
 
-      {/* 下一步 */}
-      {report.next_steps?.length > 0 && (
-        <div>
-          <label className="text-xs text-slate-400 mb-2 block">➡️ 下一步行动</label>
-          <div className="space-y-1">
-            {report.next_steps.map((s: string, i: number) => (
-              <div key={i} className="text-sm text-slate-300 flex gap-2">
-                <span className="text-indigo-400 flex-shrink-0">{i + 1}.</span>
-                <span>{s}</span>
-              </div>
-            ))}
+      {/* 手工数据 */}
+      <div>
+        <label className="text-xs text-slate-400 mb-1 block">是否涉及手工数据</label>
+        <p className="text-sm text-slate-300">{report.has_manual_data ? '是' : '否'}</p>
+        {report.has_manual_data && report.manual_data_sample && (
+          <div className="mt-1.5">
+            <label className="text-xs text-slate-400 mb-1 block">手工数据样例</label>
+            <p className="text-sm text-slate-300">{report.manual_data_sample}</p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {!report.summary && !report.metrics?.length && (
+      {!report.background && !report.metrics?.length && (
         <div className="text-center py-8 text-slate-500 text-sm">报告内容为空</div>
       )}
     </div>

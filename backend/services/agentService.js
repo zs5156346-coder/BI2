@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { llmService } from './llm.js';
+import { findAll } from '../db/init.js';
 
 class AgentService {
   constructor() {
@@ -117,6 +118,30 @@ class AgentService {
 
 始终以"【质量保障】"开头回复。`
       },
+      uat: {
+        name: 'UAT Agent',
+        name_cn: 'UAT验证 Agent',
+        role: 'UAT验收工程师',
+        system: `你是一个专业的BI UAT验收工程师。你的职责是：
+1. 展示已开发完成的看板和报表给业务用户
+2. 收集用户的验收反馈和修改意见
+3. 协调开发与业务方确认验收结果
+4. 生成UAT验收报告
+
+当用户发送看板/报表验收请求时，你需要：
+- 展示看板的功能清单和数据展示效果说明
+- 引导用户逐项确认数据准确性、展示效果、交互体验
+- 记录用户的反馈意见
+- 当用户确认"验收通过"时，生成验收通过报告
+
+回复格式可以是：
+- 验收清单和检查项
+- 看板功能说明
+- 用户反馈记录
+- 验收通过/不通过报告
+
+始终以"【UAT验证】"开头回复。`
+      },
       ops: {
         name: 'Ops Agent',
         name_cn: '运维监控 Agent',
@@ -187,9 +212,28 @@ class AgentService {
     const agent = this.agentPrompts[agentId];
     if (!agent) return `未知 Agent: ${agentId}`;
 
+    // 读取该 agent 配置的模型（支持 per-agent 模型选择）
+    const agentsData = findAll('agents');
+    const agentConfig = agentsData.find(a => a.id === agentId);
+    const agentModel = agentConfig?.model || 'modelroute';
+
+    // 查询该 agent 的已激活技能，注入 instructions 到 system prompt
+    const activeSkills = findAll('agent_skills',
+      s => s.agent_id === agentId && s.status === 'active' && s.instructions
+    ).slice(0, 5); // 最多 5 个技能
+
+    let systemContent = agent.system;
+    if (activeSkills.length > 0) {
+      systemContent += '\n\n## 已激活的技能\n\n' +
+        activeSkills.map(s => {
+          const instr = s.instructions.length > 2000 ? s.instructions.slice(0, 2000) + '...' : s.instructions;
+          return `### ${s.skill_name}\n${instr}`;
+        }).join('\n\n');
+    }
+
     // 构建消息历史（用于多轮对话，限制最近6轮）
     const historyMsgs = this.histories[agentId]?.slice(-6) || [];
-    const systemMsg = { role: 'system', content: agent.system };
+    const systemMsg = { role: 'system', content: systemContent };
 
     const llmMessages = [
       systemMsg,
@@ -201,9 +245,15 @@ class AgentService {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await llmService.chat(llmMessages, {
+          model: agentModel,
           temperature: 0.7,
-          maxTokens: 2048,
+          maxTokens: agentId === 'viz' ? 4096 : 2048,
+          timeout: agentId === 'viz' ? 180000 : undefined,
         });
+        // 防线：确保返回非空内容
+        if (!response || !response.trim()) {
+          throw new Error('LLM 返回了空内容');
+        }
         return response;
       } catch (err) {
         console.error(`[${agentId}] LLM调用失败(第${attempt}次):`, err.message);

@@ -1,9 +1,11 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Bot, BarChart3, GitBranch, Shield, ChevronLeft, LogOut, Settings, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, Bot, BarChart3, GitBranch, Shield, ChevronLeft, LogOut, Settings, ClipboardList, LayoutGrid, Database } from 'lucide-react'
 import { useState } from 'react'
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: '仪表盘' },
+  { path: '/portal', icon: LayoutGrid, label: '数据门户' },
+  { path: '/market', icon: Database, label: '数据市场' },
   { path: '/agents', icon: Bot, label: 'Agent 协作' },
   { path: '/metrics', icon: BarChart3, label: '指标管理' },
   { path: '/visualization', icon: BarChart3, label: '可视化' },

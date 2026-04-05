@@ -22,6 +22,7 @@ const DB = {
   permissions: join(DATA_DIR, 'permissions.json'),
   requirements: join(DATA_DIR, 'requirements.json'),
   audit_logs: join(DATA_DIR, 'audit_logs.json'),
+  agent_skills: join(DATA_DIR, 'agent_skills.json'),
 };
 
 function read(key) {
@@ -85,6 +86,7 @@ export function initDB() {
       { id: 'service', name: 'Service Agent', name_cn: '指标服务 Agent', description: '提供指标API接口，支持灵活查询', icon: '🔌', color: '#10b981', capabilities: ['接口生成', '查询优化', '缓存管理', '版本控制'], status: 'online' },
       { id: 'viz', name: 'Viz Agent', name_cn: '可视化 Agent', description: '智能推荐图表类型，设计仪表盘', icon: '📊', color: '#3b82f6', capabilities: ['图表推荐', '布局设计', '交互配置', '自动发布'], status: 'online' },
       { id: 'qa', name: 'QA Agent', name_cn: '质量保障 Agent', description: '全链路数据质量检查和验证', icon: '🛡️', color: '#ef4444', capabilities: ['数据质量', '口径一致性', '回归测试', '测试报告'], status: 'online' },
+      { id: 'uat', name: 'UAT Agent', name_cn: 'UAT验证 Agent', description: '业务验收验证，展示看板并收集用户反馈', icon: '✅', color: '#14b8a6', capabilities: ['验收测试', '看板展示', '用户反馈', '验收报告'], status: 'online' },
       { id: 'ops', name: 'Ops Agent', name_cn: '运维监控 Agent', description: '监控任务执行，处理告警', icon: '⚙️', color: '#6b7280', capabilities: ['调度监控', '数据新鲜度', '性能监控', '告警管理'], status: 'online' },
       { id: 'orchestrator', name: 'Orchestrator Agent', name_cn: '编排调度 Agent', description: '协调各Agent工作，跟踪项目进度', icon: '🎯', color: '#ec4899', capabilities: ['任务编排', 'Agent分派', '状态追踪', '异常处理'], status: 'online' },
     ];

@@ -1,11 +1,22 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Copy, Check, BarChart3, X } from 'lucide-react'
+import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Copy, Check, X, ChevronDown } from 'lucide-react'
+import SkillInstaller from '../../components/SkillInstaller'
+import DashboardPreview from '../../components/DashboardPreview'
 
 const API = '/api'
 const token = () => localStorage.getItem('token') || ''
 
-interface Message { id: string; role: string; content: string; timestamp?: string }
+const AVAILABLE_MODELS = [
+  { id: 'modelroute', name: 'ModelRoute (GLM)' },
+  { id: 'claude', name: 'Claude' },
+  { id: 'gpt-4o', name: 'GPT-4o' },
+  { id: 'deepseek', name: 'DeepSeek' },
+  { id: 'qwen', name: 'Qwen' },
+  { id: 'gemini', name: 'Gemini' },
+]
+
+interface Message { id: string; role: string; content: string; timestamp?: string; metadata?: any }
 
 export default function AgentChat() {
   const { agentId } = useParams<{ agentId: string }>()
@@ -15,10 +26,13 @@ export default function AgentChat() {
   const [loading, setLoading] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [contextData, setContextData] = useState<any>(null)
-  const [reportGenerating, setReportGenerating] = useState(false)
-  const [showReport, setShowReport] = useState(false)
-  const [reportData, setReportData] = useState<any>(null)
-  const [reportSaved, setReportSaved] = useState(false)
+  const [installedSkillsCount, setInstalledSkillsCount] = useState(0)
+  const [showSkillInstaller, setShowSkillInstaller] = useState(false)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [importedIds, setImportedIds] = useState<Set<string>>(new Set())
+  const [currentModel, setCurrentModel] = useState<string>('modelroute')
+  const [showModelPicker, setShowModelPicker] = useState(false)
+  const [switchingModel, setSwitchingModel] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -42,17 +56,23 @@ export default function AgentChat() {
     fetch(`${API}/agents/${agentId}`, { headers: { Authorization: `Bearer ${token()}` } })
       .then(r => r.json()).then(data => {
         setAgent(data)
+        setCurrentModel(data.model || 'modelroute')
         document.title = `${data.name_cn} - ClawBI`
       }).catch(console.error)
     fetch(`${API}/agents/${agentId}/messages`, { headers: { Authorization: `Bearer ${token()}` } })
       .then(r => r.json()).then(data => {
-        setMessages(data.map((m: any) => ({ id: m.id, role: m.role, content: m.content })))
+        setMessages(data.map((m: any) => ({ id: m.id, role: m.role, content: m.content, metadata: m.metadata })))
       }).catch(console.error)
+    // 加载已安装的 Skills 数量
+    fetch(`${API}/skills/agent/${agentId}`, { headers: { Authorization: `Bearer ${token()}` } })
+      .then(r => r.json())
+      .then(data => setInstalledSkillsCount(Array.isArray(data) ? data.length : 0))
+      .catch(() => setInstalledSkillsCount(0))
   }, [agentId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, showReport])
+  }, [messages])
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return
@@ -61,9 +81,6 @@ export default function AgentChat() {
     const msgText = input.trim()
     setInput('')
     setLoading(true)
-    setReportGenerating(false)
-    setShowReport(false)
-
     try {
       await fetch(`${API}/agents/${agentId}/messages`, {
         method: 'POST',
@@ -73,7 +90,7 @@ export default function AgentChat() {
       const res = await fetch(`${API}/agents/${agentId}/chat`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msgText, context: {}, create_requirement: agentId === 'analyst' && !contextData?.id })
+        body: JSON.stringify({ message: msgText, context: {} })
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -96,6 +113,24 @@ export default function AgentChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
+  const switchAgentModel = async (modelId: string) => {
+    if (modelId === currentModel || switchingModel) return
+    setSwitchingModel(true)
+    setShowModelPicker(false)
+    try {
+      const res = await fetch(`${API}/agents/${agentId}/model`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: modelId })
+      })
+      if (res.ok) {
+        setCurrentModel(modelId)
+        setAgent(prev => prev ? { ...prev, model: modelId } : prev)
+      }
+    } catch {}
+    setSwitchingModel(false)
+  }
+
   const copyContent = (text: string, id: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedId(id)
@@ -103,41 +138,37 @@ export default function AgentChat() {
     })
   }
 
-  const generateReport = async () => {
-    if (messages.length < 2) { alert('请先进行对话再生成报告'); return }
-    const reqId = contextData?.id
-    if (!reqId) { alert('请从项目页面选择一个需求后再生成报告'); return }
-    setReportGenerating(true)
-    setShowReport(false)
+  const confirmImportRequirement = async (assistantMsg: Message) => {
+    const msgIndex = messages.findIndex(m => m.id === assistantMsg.id)
+    if (msgIndex < 0) return
+
+    // 只收集当前需求相关的对话：从上一个已导入消息之后开始，到当前 assistant 消息为止
+    let startIndex = 0
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (importedIds.has(messages[i].id)) {
+        startIndex = i + 1
+        break
+      }
+    }
+    const conversation = messages.slice(startIndex, msgIndex + 1).map(m => ({ role: m.role, content: m.content }))
+
+    setConfirmingId(assistantMsg.id)
     try {
-      const res = await fetch(`${API}/requirements/report/generate`, {
+      const res = await fetch(`${API}/requirements/import-from-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-        body: JSON.stringify({ requirement_id: reqId, agent_id: agentId, conversation: messages.map(m => ({ role: m.role, content: m.content })) }),
+        body: JSON.stringify({ conversation, agent_id: 'analyst' })
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || '生成失败')
-      setReportData(data.report)
-      setShowReport(true)
-    } catch (err: any) {
-      alert('生成报告失败: ' + err.message)
+      if (res.ok) {
+        setImportedIds(prev => new Set(prev).add(assistantMsg.id))
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        alert(errData.error || '导入失败，请重试')
+      }
+    } catch {
+      alert('导入失败，请重试')
     } finally {
-      setReportGenerating(false)
-    }
-  }
-
-  const saveReportToRequirement = async () => {
-    if (!reportData || !contextData?.id) return
-    try {
-      await fetch(`${API}/requirements/${contextData.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-        body: JSON.stringify({ report: reportData.readableReport, status: 'analyzing' }),
-      })
-      setReportSaved(true)
-      setTimeout(() => setReportSaved(false), 3000)
-    } catch (err: any) {
-      alert('保存失败: ' + err.message)
+      setConfirmingId(null)
     }
   }
 
@@ -221,7 +252,59 @@ export default function AgentChat() {
           <span className="w-2 h-2 rounded-full bg-green-400"></span>
           <span className="text-xs text-slate-400">在线</span>
         </div>
+        {/* Per-Agent 模型选择器 */}
+        <div className="relative ml-2">
+          <button
+            onClick={() => setShowModelPicker(!showModelPicker)}
+            disabled={switchingModel}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-dark-border hover:border-primary-500/50 text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50"
+          >
+            {switchingModel ? <RefreshCw size={12} className="animate-spin" /> : null}
+            {AVAILABLE_MODELS.find(m => m.id === currentModel)?.name || currentModel}
+            <ChevronDown size={12} />
+          </button>
+          {showModelPicker && (
+            <div className="absolute right-0 top-full mt-1 w-48 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 py-1">
+              {AVAILABLE_MODELS.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => switchAgentModel(m.id)}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition-colors ${
+                    m.id === currentModel
+                      ? 'bg-primary-600/20 text-primary-400'
+                      : 'text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <span>{m.name}</span>
+                  {m.id === currentModel && <Check size={12} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => setShowSkillInstaller(true)}
+          className="ml-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-600/20 border border-primary-600/40 text-primary-400 text-xs hover:bg-primary-600/30 transition-colors"
+        >
+          <Sparkles size={14} />
+          Skills {installedSkillsCount > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary-600 text-white text-xs">{installedSkillsCount}</span>}
+        </button>
       </div>
+
+      {/* Skill 安装弹窗 */}
+      {showSkillInstaller && agent && (
+        <SkillInstaller
+          agentId={agent.id}
+          agentName={agent.name}
+          agentNameCn={agent.name_cn}
+          onClose={() => {
+            setShowSkillInstaller(false)
+            fetch(`${API}/skills/agent/${agent.id}`, { headers: { Authorization: `Bearer ${token()}` } })
+              .then(r => r.json())
+              .then(data => setInstalledSkillsCount(Array.isArray(data) ? data.length : 0))
+          }}
+        />
+      )}
 
       {/* 需求上下文提示条 */}
       {contextData && (
@@ -241,93 +324,6 @@ export default function AgentChat() {
         </div>
       )}
 
-      {/* 分析报告展示面板 */}
-      {showReport && reportData && (
-        <div className="border-t border-indigo-700/30 bg-indigo-950/30 max-h-80 overflow-y-auto">
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <BarChart3 size={16} className="text-indigo-400" />
-                <h3 className="text-sm font-semibold text-indigo-300">📄 需求分析报告</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-900/40 text-indigo-400">
-                  置信度 {((reportData.confidence || 0.8) * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={saveReportToRequirement}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600/20 border border-emerald-600/40 text-emerald-400 text-xs hover:bg-emerald-600/30">
-                  {reportSaved ? '✅ 已保存' : '💾 保存到需求'}
-                </button>
-                <button onClick={generateReport} disabled={reportGenerating}
-                  className="px-3 py-1.5 rounded-lg bg-dark-bg border border-dark-border text-slate-400 text-xs hover:text-white disabled:opacity-50">
-                  {reportGenerating ? '生成中...' : '🔄 重新生成'}
-                </button>
-                <button onClick={() => setShowReport(false)}
-                  className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-white text-xs">
-                  收起
-                </button>
-              </div>
-            </div>
-            {/* 指标 */}
-            {reportData.report?.metrics?.length > 0 && (
-              <div className="mb-3">
-                <h4 className="text-xs text-slate-400 mb-2 font-medium">📊 指标定义</h4>
-                <div className="space-y-2">
-                  {reportData.report.metrics.map((m: any, i: number) => (
-                    <div key={i} className="bg-dark-bg rounded-lg p-3 border border-dark-border">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-white">{m.name_cn}</span>
-                        <span className="text-xs text-slate-500 font-mono">({m.name})</span>
-                        {m.category && <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">{m.category}</span>}
-                        {m.priority === 'high' && <span className="text-xs text-red-400 ml-auto">🔴 高优</span>}
-                      </div>
-                      {m.expression && <div className="text-xs font-mono text-indigo-400 mb-1">公式: {m.expression}</div>}
-                      {m.dimensions?.length > 0 && <div className="text-xs text-slate-500">维度: {m.dimensions.join(', ')}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* 业务目标 */}
-            {reportData.report?.business_goal && (
-              <div className="mb-3">
-                <h4 className="text-xs text-slate-400 mb-1 font-medium">🎯 业务目标</h4>
-                <p className="text-sm text-slate-300">{reportData.report.business_goal}</p>
-              </div>
-            )}
-            {/* 分析方案 */}
-            {reportData.report?.analysis_plan && (
-              <div className="mb-3">
-                <h4 className="text-xs text-slate-400 mb-1 font-medium">📋 分析方案</h4>
-                <p className="text-sm text-slate-300">{reportData.report.analysis_plan.approach}</p>
-              </div>
-            )}
-            {/* 下一步 */}
-            {reportData.report?.next_steps?.length > 0 && (
-              <div>
-                <h4 className="text-xs text-slate-400 mb-1.5 font-medium">➡️ 下一步行动</h4>
-                {reportData.report.next_steps.map((s: string, i: number) => (
-                  <div key={i} className="text-sm text-slate-300 flex gap-2 mb-1">
-                    <span className="text-indigo-400 flex-shrink-0">{i + 1}.</span>
-                    <span>{s}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="px-4 pb-3 flex gap-2">
-            <button onClick={generateReport} disabled={reportGenerating}
-              className="px-4 py-2 bg-indigo-600/20 border border-indigo-600/40 text-indigo-400 rounded-lg text-xs hover:bg-indigo-600/30 disabled:opacity-50 flex items-center gap-1.5">
-              {reportGenerating ? <><RefreshCw size={12} className="animate-spin" /> 生成中</> : <><RefreshCw size={12} /> 重新生成</>}
-            </button>
-            <button onClick={saveReportToRequirement}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs hover:bg-emerald-500 flex items-center gap-1.5">
-              💾 保存到需求
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.length === 0 && (
@@ -343,12 +339,6 @@ export default function AgentChat() {
                 </div>
               ))}
             </div>
-            {agentId === 'analyst' && (
-              <button onClick={generateReport} disabled={reportGenerating}
-                className="mt-6 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-2">
-                {reportGenerating ? <><RefreshCw size={14} className="animate-spin" /> 生成中...</> : <><BarChart3 size={14} /> 生成分析报告</>}
-              </button>
-            )}
             <p className="text-sm text-slate-500 mt-4">💬 在下方输入您的问题开始对话</p>
           </div>
         )}
@@ -363,7 +353,40 @@ export default function AgentChat() {
                 msg.role === 'user' ? 'bg-primary-600 text-white rounded-tr-md' : 'bg-dark-card border border-dark-border text-slate-200 rounded-tl-md'
               }`}>
                 <div className="space-y-1 text-left">{renderContent(msg.content)}</div>
+                {msg.metadata?.type === 'uat_document' && msg.metadata?.dashboard && (
+                  <div className="mt-4 border-t border-dark-border pt-4">
+                    <DashboardPreview dashboard={msg.metadata.dashboard} />
+                  </div>
+                )}
               </div>
+              {/* 需求分析 agent 的 assistant 回复下方显示确认导入按钮（评审文档、UAT文档、非需求内容不显示） */}
+              {agentId === 'analyst' && msg.role === 'assistant' && !contextData?.id && !['review_document', 'uat_document'].includes(msg.metadata?.type) && (() => {
+                // 过滤闲聊/使用指南类回复，只在包含业务分析内容时才显示导入按钮
+                const content = msg.content || '';
+                const hasBusinessKeyword = /分析|报表|指标|看板|需求|监控|统计|数据|计算|维度|度量|公式|建议.*指标|建议.*维度|业务|转化|留存|活跃|趋势|对比|占比|同比|环比/.test(content);
+                const isGuideOrChatty = /我可以帮你|请描述|请告诉我|你可以问我|我负责|我会|欢迎使用/.test(content);
+                return hasBusinessKeyword && !isGuideOrChatty;
+              })() && (
+                <div className="mt-1.5">
+                  {importedIds.has(msg.id) ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+                      <Check size={12} /> 已导入需求管理
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => confirmImportRequirement(msg)}
+                      disabled={confirmingId === msg.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-600/20 border border-indigo-600/30 text-indigo-400 hover:bg-indigo-600/30 disabled:opacity-50 transition-colors"
+                    >
+                      {confirmingId === msg.id ? (
+                        <><RefreshCw size={12} className="animate-spin" /> 导入中...</>
+                      ) : (
+                        <>📋 确认导入需求</>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -376,16 +399,6 @@ export default function AgentChat() {
                 <RefreshCw size={14} className="animate-spin" /> 思考中...
               </div>
             </div>
-          </div>
-        )}
-
-        {/* 对话完成后显示报告生成按钮 */}
-        {!loading && messages.length >= 3 && agentId === 'analyst' && !showReport && (
-          <div className="flex justify-center pt-2">
-            <button onClick={generateReport} disabled={reportGenerating}
-              className="px-5 py-2.5 bg-indigo-600/20 border border-indigo-600/40 text-indigo-400 rounded-xl text-sm font-medium hover:bg-indigo-600/30 disabled:opacity-50 flex items-center gap-2 transition-colors">
-              {reportGenerating ? <><RefreshCw size={14} className="animate-spin" /> 生成中...</> : <><BarChart3 size={15} /> 生成结构化分析报告</>}
-            </button>
           </div>
         )}
 
@@ -410,21 +423,6 @@ export default function AgentChat() {
               className="px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium">
               <Send size={16} /> 发送
             </button>
-            {agentId === 'analyst' && input.trim() && (
-              <button
-                onClick={async () => {
-                  const token = localStorage.getItem('token')
-                  const res = await fetch(`${API}/requirements`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ title: input.substring(0, 80), description: input, source: 'agent', agent_id: 'analyst' })
-                  })
-                  if (res.ok) alert('✅ 已保存到需求清单')
-                }}
-                className="px-3 py-1.5 rounded-xl text-xs bg-dark-bg border border-dark-border text-slate-400 hover:text-white hover:border-slate-500 transition-colors flex items-center justify-center gap-1">
-                📋 保存需求
-              </button>
-            )}
           </div>
         </div>
         <p className="text-xs text-slate-600 text-center mt-2">Enter 发送，Shift+Enter 换行</p>
