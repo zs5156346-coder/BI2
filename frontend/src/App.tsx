@@ -14,6 +14,8 @@ import Requirements from './pages/Requirements/Requirements';
 import Dashboard from './pages/Dashboard/Dashboard';
 import DataPortal from './pages/DataPortal/DataPortal';
 import DataMarket from './pages/DataMarket/DataMarket';
+import DataSource from './pages/DataSource/DataSource';
+import Dataset from './pages/Dataset/Dataset';
 import SkillInstaller from './components/SkillInstaller';
 import { Sparkles } from 'lucide-react';
 
@@ -43,6 +45,8 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="portal" element={<DataPortal />} />
           <Route path="market" element={<DataMarket />} />
+          <Route path="datasources" element={<DataSource />} />
+          <Route path="datasets" element={<Dataset />} />
           <Route path="agents" element={<AgentList />} />
           <Route path="agents/:agentId" element={<AgentChat />} />
           <Route path="metrics" element={<Metrics />} />

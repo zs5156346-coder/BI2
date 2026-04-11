@@ -30,6 +30,8 @@ import dashboardRoutes from './routes/dashboard.js';
 import modelRoutes from './routes/models.js';
 import requirementRoutes from './routes/requirements.js';
 import skillRoutes from './routes/skills.js';
+import datasourceRoutes from './routes/datasources.js';
+import datasetRoutes from './routes/datasets.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/agents', authMiddleware, agentRoutes);
@@ -40,6 +42,8 @@ app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 app.use('/api/models', authMiddleware, modelRoutes);
 app.use('/api/requirements', authMiddleware, requirementRoutes);
+app.use('/api/datasources', authMiddleware, datasourceRoutes);
+app.use('/api/datasets', authMiddleware, datasetRoutes);
 
 // Agent 模拟服务（调用 OpenClaw 或模拟）
 import { AgentService } from './services/agentService.js';

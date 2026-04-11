@@ -538,6 +538,21 @@ router.post('/:id/approve-review', (req, res) => {
       updated_at: new Date().toISOString(),
     });
 
+    // 自动创建交付任务项目
+    const project = {
+      id: uuidv4(),
+      name: `${requirement.title} - 交付任务`,
+      description: `需求「${requirement.title}」已通过评审，进入交付阶段。\n\n需求编号：${requirement.id.substring(0, 8)}\n需求描述：${requirement.description || ''}`,
+      status: 'delivering',
+      current_phase: 'delivering',
+      progress: 50,
+      requirement_id: requirement.id,
+      created_by: req.user?.id || requirement.created_by || 'system',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    insert('projects', project);
+
     res.json({
       success: true,
       message: `评审通过，已成功导入 ${importedMetrics.length} 个指标到指标管理`,

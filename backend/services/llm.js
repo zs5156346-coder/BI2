@@ -11,7 +11,7 @@ const CONFIG_FILE = join(__dirname, '../config/models.json');
 
 const QCLAW_PROXY = 'http://127.0.0.1:19000/proxy/llm';
 const QCLAW_KEY = '__QCLAW_AUTH_GATEWAY_MANAGED__';
-const DEFAULT_TIMEOUT = 15000;
+const DEFAULT_TIMEOUT = 60000;
 const CACHE_TTL = 5 * 60 * 1000;
 
 function readConfig() {
@@ -39,6 +39,14 @@ class LLMService {
 
     // 优先级2: 根据 defaultProvider 配置决定走哪条链路
     const active = getActiveProvider();
+
+    // 如果配置了自定义 provider 且 options.model 是通用路由标识，则替换为配置的 defaultModel
+    if (active && (options.model === 'modelroute' || options.model === 'qwen')) {
+      const cfg = readConfig();
+      if (cfg.defaultModel && cfg.defaultModel !== options.model) {
+        options = { ...options, model: cfg.defaultModel };
+      }
+    }
 
     // 模式1：使用 QClaw 内置代理
     if (!active) {
@@ -82,7 +90,11 @@ class LLMService {
       return content;
     } catch (err) {
       clearTimeout(timer);
-      if (err.name === 'AbortError') throw new Error('LLM 请求超时');
+      if (err.name === 'AbortError') {
+        console.error(`[LLM] DashScope 超时 | url=${url} | model=${model} | timeout=${DEFAULT_TIMEOUT}ms`);
+        throw new Error('LLM 请求超时');
+      }
+      console.error(`[LLM] DashScope 错误 | url=${url} | model=${model} | err=${err.message}`);
       throw err;
     }
   }
@@ -165,7 +177,10 @@ class LLMService {
       return content;
     } catch (err) {
       clearTimeout(timer);
-      if (err.name === 'AbortError') throw new Error('LLM 请求超时');
+      if (err.name === 'AbortError') {
+        console.error(`[LLM] QClaw 超时 | timeout=${DEFAULT_TIMEOUT}ms | model=${options.model || 'modelroute'}`);
+        throw new Error('LLM 请求超时');
+      }
       throw err;
     }
   }

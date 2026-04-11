@@ -19,6 +19,7 @@ const PHASES = [
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   planning: { label: '规划中', color: 'bg-blue-900/50 text-blue-400', bg: 'border-blue-700' },
   developing: { label: '开发中', color: 'bg-amber-900/50 text-amber-400', bg: 'border-amber-700' },
+  delivering: { label: '交付中', color: 'bg-amber-900/50 text-amber-400', bg: 'border-amber-700' },
   completed: { label: '已完成', color: 'bg-green-900/50 text-green-400', bg: 'border-green-700' },
 }
 
@@ -230,7 +231,9 @@ export default function Projects() {
     if (projectPhase === 'ops' && selectedProject?.status === 'completed') {
       return 'completed'
     }
-    const pIdx = PHASES.findIndex(p => p.id === projectPhase)
+    // delivering 状态等同于 model 阶段（已进入流水线交付）
+    const effectivePhase = projectPhase === 'delivering' ? 'model' : projectPhase
+    const pIdx = PHASES.findIndex(p => p.id === effectivePhase)
     const cIdx = PHASES.findIndex(p => p.id === phaseId)
     if (cIdx < pIdx) return 'completed'
     if (cIdx === pIdx) return 'current'

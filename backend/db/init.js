@@ -23,6 +23,8 @@ const DB = {
   requirements: join(DATA_DIR, 'requirements.json'),
   audit_logs: join(DATA_DIR, 'audit_logs.json'),
   agent_skills: join(DATA_DIR, 'agent_skills.json'),
+  datasources: join(DATA_DIR, 'datasources.json'),
+  datasets: join(DATA_DIR, 'datasets.json'),
 };
 
 function read(key) {
@@ -122,6 +124,115 @@ export function initDB() {
       { id: uuidv4(), name: '供应链监控平台', description: '实时监控供应链各环节指标', status: 'completed', current_phase: 'ops', progress: 100, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
     ];
     write('projects', projects);
+  }
+
+  // DataSources
+  if (!fs.existsSync(DB.datasources) || read('datasources').length === 0) {
+    const datasources = [
+      { id: 'ds-mes', name: 'MES 制造执行系统', type: 'mysql', host: '192.168.1.10', port: 3306, database: 'mes_production', username: 'readonly', password_encrypted: Buffer.from('mes_readonly_2026').toString('base64'), status: 'online', description: '生产制造执行系统，包含生产订单、工位数据、产出量等', last_test_at: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'ds-crm', name: 'CRM 客户关系系统', type: 'mysql', host: '192.168.1.20', port: 3306, database: 'crm_sales', username: 'readonly', password_encrypted: Buffer.from('crm_readonly_2026').toString('base64'), status: 'online', description: '客户关系管理系统，包含客户信息、销售订单、交付数据等', last_test_at: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'ds-dms', name: 'DMS 经销商管理系统', type: 'postgresql', host: '192.168.1.30', port: 5432, database: 'dms_dealer', username: 'readonly', password_encrypted: Buffer.from('dms_readonly_2026').toString('base64'), status: 'online', description: '经销商管理系统，包含交付、维修工单、NPS等数据', last_test_at: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'ds-erp', name: 'ERP 企业资源计划', type: 'mysql', host: '192.168.1.40', port: 3306, database: 'erp_finance', username: 'readonly', password_encrypted: Buffer.from('erp_readonly_2026').toString('base64'), status: 'online', description: 'ERP系统，包含成本、库存、采购等财务数据', last_test_at: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'ds-wms', name: 'WMS 仓储管理系统', type: 'mysql', host: '192.168.1.50', port: 3306, database: 'wms_inventory', username: 'readonly', password_encrypted: Buffer.from('wms_readonly_2026').toString('base64'), status: 'offline', description: '仓储管理系统，包含配件库存、出入库记录等', last_test_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'ds-tms', name: 'TMS 运输管理系统', type: 'mysql', host: '192.168.1.60', port: 3306, database: 'tms_logistics', username: 'readonly', password_encrypted: Buffer.from('tms_readonly_2026').toString('base64'), status: 'online', description: '运输管理系统，包含在途车辆、物流跟踪等数据', last_test_at: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+    ];
+    write('datasources', datasources);
+  }
+
+  // Datasets
+  if (!fs.existsSync(DB.datasets) || read('datasets').length === 0) {
+    const datasets = [
+      {
+        id: 'set-production', source_id: 'ds-mes', name: '车辆生产明细表', table_name: 'mes_vehicle_production', query: '', mode: 'table',
+        fields: [
+          { name: 'vehicle_id', type: 'string', description: '车辆唯一标识' },
+          { name: 'vehicle_model', type: 'string', description: '车型代号' },
+          { name: 'production_status', type: 'string', description: '生产状态：planned/ongoing/completed' },
+          { name: 'production_date', type: 'date', description: '生产完成日期' },
+          { name: 'workshop', type: 'string', description: '车间' },
+          { name: 'line_id', type: 'string', description: '产线编号' },
+          { name: 'region', type: 'string', description: '工厂所在区域' },
+        ],
+        row_count: 125680, sync_mode: 'manual', status: 'active',
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'set-delivery', source_id: 'ds-crm', name: '车辆交付明细表', table_name: 'crm_vehicle_delivery', query: '', mode: 'table',
+        fields: [
+          { name: 'delivery_id', type: 'string', description: '交付记录ID' },
+          { name: 'vin', type: 'string', description: '车架号' },
+          { name: 'vehicle_model', type: 'string', description: '车型代号' },
+          { name: 'delivery_status', type: 'string', description: '交付状态' },
+          { name: 'customer_sign_date', type: 'date', description: '客户签收日期' },
+          { name: 'promised_date', type: 'date', description: '承诺交付日期' },
+          { name: 'region', type: 'string', description: '销售区域' },
+          { name: 'dealer_id', type: 'string', description: '经销商ID' },
+        ],
+        row_count: 98320, sync_mode: 'manual', status: 'active',
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'set-transit', source_id: 'ds-tms', name: '在途车辆明细表', table_name: 'tms_vehicle_transit', query: '', mode: 'table',
+        fields: [
+          { name: 'transit_id', type: 'string', description: '在途记录ID' },
+          { name: 'vin', type: 'string', description: '车架号' },
+          { name: 'ship_date', type: 'date', description: '发运日期' },
+          { name: 'arrival_status', type: 'string', description: '到达状态：in_transit/arrived/signed' },
+          { name: 'origin', type: 'string', description: '始发地' },
+          { name: 'destination', type: 'string', description: '目的地' },
+          { name: 'vehicle_model', type: 'string', description: '车型代号' },
+        ],
+        row_count: 4520, sync_mode: 'manual', status: 'active',
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'set-aftersales', source_id: 'ds-dms', name: '售后维修工单表', table_name: 'dms_service_workorder', query: '', mode: 'table',
+        fields: [
+          { name: 'workorder_id', type: 'string', description: '工单编号' },
+          { name: 'service_type', type: 'string', description: '服务类型：warranty/maintenance/repair' },
+          { name: 'vin', type: 'string', description: '车架号' },
+          { name: 'vehicle_model', type: 'string', description: '车型' },
+          { name: 'checkin_time', type: 'datetime', description: '进站时间' },
+          { name: 'completion_time', type: 'datetime', description: '维修完成时间' },
+          { name: 'labor_cost', type: 'decimal', description: '工时费' },
+          { name: 'parts_cost', type: 'decimal', description: '材料费' },
+          { name: 'total_cost', type: 'decimal', description: '总费用' },
+          { name: 'nps_score', type: 'int', description: '客户满意度评分' },
+          { name: 'satisfaction_level', type: 'string', description: '满意程度：satisfied/neutral/unsatisfied' },
+        ],
+        row_count: 67800, sync_mode: 'manual', status: 'active',
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'set-parts-cost', source_id: 'ds-erp', name: '维修成本明细表', table_name: 'erp_repair_cost', query: '', mode: 'table',
+        fields: [
+          { name: 'cost_id', type: 'string', description: '成本记录ID' },
+          { name: 'workorder_id', type: 'string', description: '关联工单号' },
+          { name: 'cost_type', type: 'string', description: '成本类型：labor/parts/overhead' },
+          { name: 'amount', type: 'decimal', description: '金额' },
+          { name: 'period', type: 'string', description: '统计周期(年月)' },
+        ],
+        row_count: 203400, sync_mode: 'manual', status: 'active',
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'set-parts-inventory', source_id: 'ds-wms', name: '配件库存明细表', table_name: 'wms_parts_inventory', query: '', mode: 'table',
+        fields: [
+          { name: 'material_id', type: 'string', description: '物料编码' },
+          { name: 'material_name', type: 'string', description: '物料名称' },
+          { name: 'warehouse', type: 'string', description: '仓库' },
+          { name: 'stock_qty', type: 'int', description: '当前库存量' },
+          { name: 'safety_stock', type: 'int', description: '安全库存量' },
+          { name: 'avg_daily_consumption', type: 'float', description: '日均消耗量' },
+          { name: 'outbound_amount', type: 'decimal', description: '出库金额' },
+          { name: 'avg_inventory_amount', type: 'decimal', description: '平均库存金额' },
+          { name: 'period', type: 'string', description: '统计周期(年月)' },
+        ],
+        row_count: 15600, sync_mode: 'manual', status: 'active',
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      },
+    ];
+    write('datasets', datasets);
   }
 
   console.log('✅ JSON数据库初始化完成');
